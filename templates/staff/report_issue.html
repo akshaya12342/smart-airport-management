@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Report Ground Operational Issue{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i> Report Ground Operational Problem
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card card-ops shadow-lg">
+      <div class="card-ops-header d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-megaphone-fill text-warning me-2"></i> Operational Problem Alert</h5>
+        <a href="{% url 'ground_staff_dashboard' %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+      </div>
+
+      <div class="card-body p-4">
+        <div class="alert alert-warning bg-opacity-25 border-warning text-dark small mb-4">
+          <i class="bi bi-info-circle-fill text-warning me-1"></i> Submitting this issue will immediately notify the Airport Operations Center (AOC) and trigger risk recalculation.
+        </div>
+
+        <form method="POST" action="{% url 'staff_report_issue' %}">
+          {% csrf_token %}
+          
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Related Assigned Flight</label>
+              {{ form.flight }}
+              <small class="text-muted" style="font-size: 0.72rem;">Leave empty if general airport/gate issue</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Issue Category</label>
+              {{ form.issue_type }}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-dark small fw-bold">Urgency / Priority Level</label>
+            {{ form.priority }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-dark small fw-bold">Short Title</label>
+            {{ form.title }}
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label text-dark small fw-bold">Detailed Description & Operational Impact</label>
+            {{ form.description }}
+          </div>
+
+          <button type="submit" class="btn btn-warning w-100 fw-bold py-2 shadow-sm text-dark">
+            <i class="bi bi-send-fill me-1"></i> Dispatch Problem Alert to AOC
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

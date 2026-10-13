@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}Airport-Wide Baggage Operations - Ground Staff{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-luggage-fill text-primary me-2"></i> All Passenger Baggage Operations &amp; Tracking Desk
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+
+  <!-- Top Action Bar -->
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <a href="{% url 'ground_staff_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+      </a>
+      <div class="d-flex gap-2">
+        <a href="{% url 'staff_counter_booking' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+          <i class="bi bi-person-plus-fill me-1"></i> Counter Booking Desk
+        </a>
+        <a href="{% url 'staff_ticket_verification' %}" class="btn btn-outline-success btn-sm rounded-pill px-3">
+          <i class="bi bi-shield-check me-1"></i> Ticket Verification Desk
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Baggage KPI Stats -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card blue shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">TOTAL BAGGAGE REGISTERED</small>
+      <div class="fs-2 fw-bold mt-1">{{ total_count }}</div>
+      <small class="opacity-75">Total weight: <strong class="text-dark">{{ total_weight }} kg</strong></small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card emerald shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">LOADED ON AIRCRAFT</small>
+      <div class="fs-2 fw-bold mt-1">{{ loaded_count }}</div>
+      <small class="opacity-75">Secured in cargo hold</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card purple shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">DELIVERED TO CAROUSEL</small>
+      <div class="fs-2 fw-bold mt-1">{{ delivered_count }}</div>
+      <small class="opacity-75">Arrivals carousel</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card rose shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">DELAYED / SPECIAL ATTENTION</small>
+      <div class="fs-2 fw-bold mt-1">{{ delayed_count }}</div>
+      <small class="opacity-75">{{ missing_count }} Missing Investigation</small>
+    </div>
+  </div>
+
+</div>
+
+<!-- Filter Bar & Full Passenger Baggage Table -->
+<div class="row g-4">
+  <div class="col-12">
+    <div class="card card-ops shadow-sm border-0 bg-white p-4">
+      
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom">
+        <div>
+          <h5 class="fw-bold text-dark mb-1">
+            <i class="bi bi-box-seam-fill text-primary me-2"></i> All Passenger Baggage Manifest &amp; Scale Records
+          </h5>
+          <p class="text-secondary small mb-0">Inspect baggage weights, passenger assignments, and update handling statuses across all airport flights.</p>
+        </div>
+
+        <!-- Filter Form -->
+        <form method="GET" action="{% url 'staff_all_baggage' %}" class="d-flex flex-wrap gap-2 align-items-center">
+          <div class="input-group input-group-sm" style="min-width: 220px;">
+            <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+            <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Search Tag, Pax, PNR, Seat...">
+          </div>
+
+          <select name="flight_id" class="form-select form-select-sm" style="width: 160px;" onchange="this.form.submit()">
+            <option value="">All Flights</option>
+            {% for fl in all_flights %}
+              <option value="{{ fl.id }}" {% if flight_filter == fl.id|stringformat:"i" %}selected{% endif %}>
+                {{ fl.flight_number }} ({{ fl.source_airport.iata_code }}→{{ fl.destination_airport.iata_code }})
+              </option>
+            {% endfor %}
+          </select>
+
+          <select name="status" class="form-select form-select-sm" style="width: 140px;" onchange="this.form.submit()">
+            <option value="">All Statuses</option>
+            {% for val, label in status_choices %}
+              <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+
+          <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">Filter</button>
+          {% if search_query or status_filter or flight_filter %}
+            <a href="{% url 'staff_all_baggage' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-2" title="Clear Filters">
+              <i class="bi bi-x-circle"></i> Clear
+            </a>
+          {% endif %}
+        </form>
+      </div>
+
+      <!-- Baggage Items Table -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 font-sans" style="font-size: 0.86rem;">
+          <thead class="table-light">
+            <tr>
+              <th>Baggage Tag</th>
+              <th>Passenger Details</th>
+              <th>Flight &amp; Gate</th>
+              <th>Seat / PNR</th>
+              <th>Scale Weight</th>
+              <th>Handling Status</th>
+              <th>Latest Scan Location</th>
+              <th class="text-end pe-3">Update Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in baggage_items %}
+              <tr>
+                <td>
+                  <strong class="text-primary font-monospace fs-6">{{ b.tag_number }}</strong>
+                  <div class="mt-1">
+                    {% if b.special_handling %}
+                      <span class="badge bg-warning text-dark border" style="font-size: 0.65rem;"><i class="bi bi-shield-exclamation me-1"></i>FRAGILE / SPECIAL</span>
+                    {% endif %}
+                  </div>
+                </td>
+
+                <td>
+                  <div class="fw-bold text-dark">{{ b.booking.passenger_name|default:b.passenger.get_full_name|default:b.passenger.username }}</div>
+                  <div class="text-muted small">{{ b.booking.passenger_email|default:b.passenger.email }} &bull; {{ b.booking.passenger_phone }}</div>
+                </td>
+
+                <td>
+                  <span class="badge bg-primary font-monospace">{{ b.flight.flight_number }}</span>
+                  <div class="text-muted small mt-1">
+                    {{ b.flight.source_airport.city }} ({{ b.flight.source_airport.iata_code }}) → {{ b.flight.destination_airport.city }} ({{ b.flight.destination_airport.iata_code }})
+                  </div>
+                  <div class="small text-secondary">
+                    Gate: <strong class="text-warning font-monospace">{{ b.flight.gate.gate_number|default:"TBD" }}</strong>
+                  </div>
+                </td>
+
+                <td>
+                  <span class="badge bg-info text-dark font-monospace fw-bold fs-6">{{ b.booking.seat_number|default:"--" }}</span>
+                  <div class="text-muted font-monospace small mt-1">PNR: {{ b.booking.booking_reference }}</div>
+                </td>
+
+                <td>
+                  <span class="fw-bold text-dark fs-6 font-monospace">{{ b.weight_kg }} kg</span>
+                  {% if b.weight_kg > 15.0 %}
+                    <div class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle mt-1" style="font-size: 0.68rem;">
+                      <i class="bi bi-exclamation-triangle-fill me-1"></i> Heavy Baggage
+                    </div>
+                  {% else %}
+                    <div class="badge bg-success-subtle text-success border border-success-subtle mt-1" style="font-size: 0.68rem;">
+                      <i class="bi bi-check2 me-1"></i> Standard
+                    </div>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <span class="badge {% if b.status == 'LOADED' or b.status == 'DELIVERED' %}bg-success{% elif b.status == 'DELAYED' or b.status == 'MISSING' %}bg-danger{% elif b.status == 'LOADING' or b.status == 'AT_GATE' or b.status == 'SCREENED' %}bg-primary{% else %}bg-secondary{% endif %} fs-6">
+                    {{ b.get_status_display }}
+                  </span>
+                </td>
+
+                <td>
+                  {% with last_scan=b.scans.first %}
+                    {% if last_scan %}
+                      <div class="small fw-semibold text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ last_scan.location }}</div>
+                      <div class="text-muted" style="font-size: 0.72rem;">{{ last_scan.scanned_at|date:"h:i:s A, d M" }}</div>
+                      {% if last_scan.notes %}
+                        <div class="text-secondary fst-italic" style="font-size: 0.72rem;">{{ last_scan.notes }}</div>
+                      {% endif %}
+                    {% else %}
+                      <span class="text-muted small">Checked in at counter</span>
+                    {% endif %}
+                  {% endwith %}
+                </td>
+
+                <td class="text-end pe-3">
+                  <!-- Inline Status Updater -->
+                  <form method="POST" action="{% url 'staff_update_baggage' b.id %}" class="d-inline-flex gap-1 align-items-center">
+                    {% csrf_token %}
+                    <select name="status" class="form-select form-select-sm" style="width: 130px; font-size: 0.78rem;">
+                      {% for val, label in status_choices %}
+                        <option value="{{ val }}" {% if b.status == val %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                    <input type="hidden" name="location" value="Gate {{ b.flight.gate.gate_number|default:'Ramp Operations' }}">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-2" title="Save Status">
+                      <i class="bi bi-check-lg"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="8" class="text-center py-5 text-muted">
+                  <i class="bi bi-luggage fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                  No baggage records found matching your query.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

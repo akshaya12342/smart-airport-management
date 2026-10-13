@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Operational Issues & Incidents Desk{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-tools text-warning me-2"></i> Operational Issues & Incident Management
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h4 class="fw-bold text-dark mb-1">Operational Incident Desk</h4>
+          <p class="text-secondary small mb-0">Track and resolve ground issues reported by staff (baggage, gate, boarding, turnaround, equipment)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card card-ops shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-ops mb-0">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Priority</th>
+                <th>Issue Category</th>
+                <th>Title & Description</th>
+                <th>Related Flight</th>
+                <th>Reported By</th>
+                <th>Status</th>
+                <th class="text-end">Resolution Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for issue in issues %}
+                <tr>
+                  <td><span class="font-monospace text-secondary">#{{ issue.id }}</span></td>
+                  <td>
+                    <span class="badge {% if issue.priority == 'CRITICAL' or issue.priority == 'HIGH' %}bg-danger{% elif issue.priority == 'MEDIUM' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                      {{ issue.get_priority_display }}
+                    </span>
+                  </td>
+                  <td>
+                    <strong class="text-dark">{{ issue.get_issue_type_display }}</strong>
+                  </td>
+                  <td style="max-width: 320px;">
+                    <strong class="text-dark d-block">{{ issue.title }}</strong>
+                    <div class="text-secondary small">{{ issue.description }}</div>
+                    {% if issue.resolution_notes %}
+                      <div class="p-1 mt-1 bg-success bg-opacity-10 rounded border border-success text-success small" style="font-size: 0.72rem;">
+                        <strong>Resolution:</strong> {{ issue.resolution_notes }}
+                      </div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if issue.flight %}
+                      <span class="badge bg-primary font-monospace">{{ issue.flight.flight_number }}</span>
+                    {% else %}
+                      <span class="text-muted small">Airport General</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="text-dark small">{{ issue.reported_by.get_full_name|default:issue.reported_by.username }}</span>
+                    <div class="text-muted" style="font-size: 0.7rem;">{{ issue.created_at|date:"d M, h:i A" }}</div>
+                  </td>
+                  <td>
+                    <span class="badge {% if issue.status == 'RESOLVED' %}bg-success{% elif issue.status == 'INVESTIGATING' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                      {{ issue.get_status_display }}
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    {% if issue.status != 'RESOLVED' %}
+                      <form method="POST" action="{% url 'manager_resolve_issue' issue.id %}" class="d-flex justify-content-end gap-1">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="RESOLVED">
+                        <input type="text" name="resolution_notes" class="form-control form-control-sm" style="width: 140px;" placeholder="Resolution Note">
+                        <button type="submit" class="btn btn-sm btn-success">
+                          <i class="bi bi-check-lg"></i>
+                        </button>
+                      </form>
+                    {% else %}
+                      <span class="text-success small"><i class="bi bi-check-circle-fill me-1"></i> Resolved</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

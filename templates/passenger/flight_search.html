@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Available Flights - Airport System{% endblock %}
+
+{% block page_title %}Find and book a flight{% endblock %}
+{% block page_subtitle %}Live scheduled departures from the airport database{% endblock %}
+
+{# The search form lives on this page, so the generic quick-action chips are not needed #}
+{% block quick_actions %}{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ---------- Search bar (horizontal, floating) ---------- */
+  .search-bar { padding: 1.35rem 1.5rem 1.5rem; margin-bottom: 1.75rem; height: auto; }
+  .search-bar:hover { transform: none; }
+  .search-grid {
+    display: grid; gap: 1rem; align-items: end;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 768px)  { .search-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1200px) { .search-grid { grid-template-columns: 1.3fr auto 1.3fr 1fr 1fr 1fr auto; } }
+
+  .field label { display: block; font-size: .78rem; font-weight: 700; color: var(--muted); margin-bottom: .35rem; }
+  .field .form-control {
+    border-radius: var(--r-sm); border-color: var(--line); padding: .65rem .85rem; background: #fbfcfe;
+  }
+  .field .form-control:focus { background: #fff; border-color: var(--brand); box-shadow: 0 0 0 4px rgba(31,111,235,.12); }
+  .field .input-wrap { position: relative; }
+  .field .input-wrap i { position: absolute; left: .85rem; top: 50%; transform: translateY(-50%); color: var(--muted); }
+  .field .input-wrap .form-control { padding-left: 2.4rem; }
+
+  .swap-btn {
+    width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line);
+    background: #fff; color: var(--brand); display: none; place-items: center;
+    transition: transform .25s ease, box-shadow .15s;
+  }
+  .swap-btn:hover { box-shadow: var(--float-1); transform: rotate(180deg); }
+  @media (min-width: 1200px) { .swap-btn { display: grid; } }
+
+  .search-actions { display: flex; gap: .5rem; }
+  .search-actions .btn-primary { padding: .65rem 1.4rem; border-radius: var(--r-sm); font-weight: 700; white-space: nowrap; }
+  .search-actions .btn-light { border: 1px solid var(--line); border-radius: var(--r-sm); background: #fff; }
+
+  /* ---------- Results header ---------- */
+  .results-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .results-head h2 { font-size: 1.05rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: .6rem; }
+
+  /* ---------- Boarding-pass style flight card ---------- */
+  .ticket-list { display: grid; gap: 1.1rem; }
+  .ticket {
+    display: grid; grid-template-columns: 1fr 240px;
+    background: var(--surface); border: 1px solid rgba(226,232,240,.9);
+    border-radius: var(--r-lg); box-shadow: var(--float-1);
+    transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease;
+    position: relative;
+  }
+  .ticket:hover { transform: translateY(-4px); box-shadow: var(--float-2); }
+  .ticket.is-cancelled { opacity: .72; }
+  .ticket.is-departed { opacity: .80; background: #fbfcfe; }
+
+  .ticket-main { padding: 1.35rem 1.6rem; min-width: 0; }
+  .ticket-stub {
+    padding: 1.35rem 1.4rem; display: flex; flex-direction: column; justify-content: space-between; gap: 1rem;
+    border-left: 2px dashed var(--line); background: #fafcff;
+    border-radius: 0 var(--r-lg) var(--r-lg) 0; position: relative;
+  }
+  /* Tear-off notches */
+  .ticket-stub::before, .ticket-stub::after {
+    content: ''; position: absolute; left: -11px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--page); border: 1px solid rgba(226,232,240,.9);
+  }
+  .ticket-stub::before { top: -11px; clip-path: inset(50% 0 0 0); }
+  .ticket-stub::after  { bottom: -11px; clip-path: inset(0 0 50% 0); }
+
+  .airline-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .airline-id { display: flex; align-items: center; gap: .85rem; min-width: 0; }
+  .airline-badge {
+    width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0; color: #fff; font-weight: 800; font-size: .9rem;
+    display: grid; place-items: center; box-shadow: 0 6px 14px -6px rgba(14,26,43,.4);
+  }
+  .airline-name { font-weight: 700; font-size: 1rem; line-height: 1.2; }
+  .airline-meta { font-size: .78rem; color: var(--muted); }
+
+  .route { display: grid; grid-template-columns: auto 1fr auto; gap: 1.1rem; align-items: center; }
+  .route-time { font-size: 1.85rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .route-city { font-weight: 600; margin-top: .35rem; }
+  .route-date { font-size: .78rem; color: var(--muted); }
+  .route .end { text-align: right; }
+
+  .route-line { display: flex; flex-direction: column; align-items: center; gap: .35rem; min-width: 90px; color: var(--muted); font-size: .75rem; }
+  .route-line .track { position: relative; width: 100%; height: 2px; background: repeating-linear-gradient(90deg, #c4d0e2 0 6px, transparent 6px 12px); }
+  .route-line .track i {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(90deg);
+    background: var(--surface); padding: 0 .35rem; color: var(--brand); font-size: 1.1rem;
+  }
+
+  .perk { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: .5rem; }
+  .perk i { color: var(--ok); }
+
+  /* Stub */
+  .stub-price { font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stub-price-sub { font-size: .75rem; color: var(--muted); margin-top: .25rem; }
+  .seat-line { display: flex; justify-content: space-between; font-size: .78rem; color: var(--muted); margin-bottom: .35rem; }
+  .seat-line b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .stub .btn { border-radius: var(--r-sm); font-weight: 700; padding: .6rem 1rem; }
+
+  @media (max-width: 767.98px) {
+    .ticket { grid-template-columns: 1fr; }
+    .ticket-stub { border-left: 0; border-top: 2px dashed var(--line); border-radius: 0 0 var(--r-lg) var(--r-lg); }
+    .ticket-stub::before, .ticket-stub::after { top: -11px; bottom: auto; clip-path: none; border: 0; }
+    .ticket-stub::before { left: -11px; } .ticket-stub::after { left: auto; right: -11px; }
+    .route-time { font-size: 1.45rem; }
+    .route-line { min-width: 56px; }
+  }
+
+  /* ---------- Empty state ---------- */
+  .empty-state { text-align: center; padding: 3.5rem 1.5rem; }
+  .empty-state .icon-circle { width: 64px; height: 64px; font-size: 1.8rem; margin: 0 auto 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ========== SEARCH BAR ========== -->
+<section class="float-card search-bar" aria-label="Search flights">
+  <form method="GET" action="{% url 'flight_search' %}" id="flight-search-form">
+    <div class="search-grid">
+      <div class="field">
+        <label for="f-source">From (Origin)</label>
+        <div class="input-wrap">
+          <i class="bi bi-geo-alt"></i>
+          <select id="f-source" name="source" class="form-select bg-white shadow-none" style="padding-left: 2.3rem;">
+            <option value="">All Origins (Select Airport)</option>
+            <optgroup label="Indian Domestic Airports">
+              {% for apt in all_airports %}
+                {% if apt.country == 'India' %}
+                  <option value="{{ apt.iata_code }}" {% if request.GET.source == apt.iata_code or request.GET.source == apt.city or request.GET.source == apt.name %}selected{% endif %}>
+                    {{ apt.city }} ({{ apt.iata_code }}) &bull; {{ apt.name }}
+                  </option>
+                {% endif %}
+              {% endfor %}
+            </optgroup>
+            <optgroup label="International Hubs">
+              {% for apt in all_airports %}
+                {% if apt.country != 'India' %}
+                  <option value="{{ apt.iata_code }}" {% if request.GET.source == apt.iata_code or request.GET.source == apt.city or request.GET.source == apt.name %}selected{% endif %}>
+                    {{ apt.city }} ({{ apt.iata_code }}) &bull; {{ apt.name }} ({{ apt.country }})
+                  </option>
+                {% endif %}
+              {% endfor %}
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <button type="button" class="swap-btn" id="swap-route" aria-label="Swap origin and destination" title="Swap">
+        <i class="bi bi-arrow-left-right"></i>
+      </button>
+
+      <div class="field">
+        <label for="f-dest">To (Destination)</label>
+        <div class="input-wrap">
+          <i class="bi bi-geo-alt-fill"></i>
+          <select id="f-dest" name="destination" class="form-select bg-white shadow-none" style="padding-left: 2.3rem;">
+            <option value="">All Destinations (Select Airport)</option>
+            <optgroup label="Indian Domestic Airports">
+              {% for apt in all_airports %}
+                {% if apt.country == 'India' %}
+                  <option value="{{ apt.iata_code }}" {% if request.GET.destination == apt.iata_code or request.GET.destination == apt.city or request.GET.destination == apt.name %}selected{% endif %}>
+                    {{ apt.city }} ({{ apt.iata_code }}) &bull; {{ apt.name }}
+                  </option>
+                {% endif %}
+              {% endfor %}
+            </optgroup>
+            <optgroup label="International Hubs">
+              {% for apt in all_airports %}
+                {% if apt.country != 'India' %}
+                  <option value="{{ apt.iata_code }}" {% if request.GET.destination == apt.iata_code or request.GET.destination == apt.city or request.GET.destination == apt.name %}selected{% endif %}>
+                    {{ apt.city }} ({{ apt.iata_code }}) &bull; {{ apt.name }} ({{ apt.country }})
+                  </option>
+                {% endif %}
+              {% endfor %}
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-date">Travel date</label>
+        <input id="f-date" type="date" name="travel_date" value="{{ request.GET.travel_date|default:'' }}" class="form-control bg-white">
+      </div>
+
+      <div class="field">
+        <label for="f-airline">Airline</label>
+        <input id="f-airline" type="text" name="airline" value="{{ request.GET.airline|default:'' }}" class="form-control bg-white" placeholder="Air India, IndiGo">
+      </div>
+
+      <div class="field">
+        <label for="f-number">Flight number</label>
+        <input id="f-number" type="text" name="flight_number" value="{{ request.GET.flight_number|default:'' }}" class="form-control bg-white" placeholder="AI-452">
+      </div>
+
+      <div class="search-actions">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i> Search</button>
+        <a href="{% url 'flight_search' %}" class="btn btn-light" title="Clear filters" aria-label="Clear filters"><i class="bi bi-x-lg"></i></a>
+      </div>
+    </div>
+  </form>
+</section>
+
+<!-- ========== RESULTS ========== -->
+<div class="results-head">
+  <h2>Available flights <span class="badge-soft">{{ flights.count }} found</span></h2>
+  <span class="small text-muted"><i class="bi bi-broadcast me-1 text-success"></i>Updated from the live schedule</span>
+</div>
+
+{% if flights %}
+  <div class="ticket-list">
+    {% for fl in flights %}
+    <article class="ticket {% if fl.status == 'CANCELLED' %}is-cancelled{% elif fl.status == 'DEPARTED' or fl.is_departed %}is-departed{% endif %}">
+
+      <!-- Main section -->
+      <div class="ticket-main">
+        <div class="airline-row">
+          <div class="airline-id">
+            <div class="airline-badge" style="background-color: {{ fl.airline.color_hex|default:'#1e3a8a' }};">{{ fl.airline.iata_code }}</div>
+            <div class="min-w-0">
+              <div class="airline-name">{{ fl.airline.name }} &bull; {{ fl.flight_number }}</div>
+              <div class="airline-meta">{{ fl.aircraft.model|default:"Jetliner" }} ({{ fl.aircraft.registration_number|default:"VT-STD" }})</div>
+            </div>
+          </div>
+          {% if fl.status == 'DEPARTED' or fl.is_departed %}
+            <span class="status-pill departed"><i class="bi bi-clock-history me-1"></i> Departed</span>
+          {% elif fl.status == 'READY_FOR_DEPARTURE' or fl.is_boarding_closed or fl.status == 'BOARDING_COMPLETED' %}
+            <span class="status-pill ready"><i class="bi bi-door-closed me-1"></i> Boarding Closed</span>
+          {% elif fl.status == 'BOARDING' %}
+            <span class="status-pill boarding"><i class="bi bi-person-walking me-1"></i> Boarding Started</span>
+          {% elif fl.status == 'DELAYED' or fl.delay_minutes > 0 %}
+            <span class="status-pill delayed"><i class="bi bi-exclamation-triangle me-1"></i> Delayed (+{{ fl.delay_minutes }}m)</span>
+          {% elif fl.status == 'CANCELLED' %}
+            <span class="status-pill cancelled"><i class="bi bi-x-circle me-1"></i> Cancelled</span>
+          {% else %}
+            <span class="status-pill on-time"><i class="bi bi-check-circle me-1"></i> On Time</span>
+          {% endif %}
+        </div>
+
+        <div class="route">
+          <div>
+            <div class="route-time">{{ fl.scheduled_departure|date:"h:i A" }}</div>
+            <div class="route-city">{{ fl.source_airport.city }} ({{ fl.source_airport.iata_code }})</div>
+            <div class="route-date">{{ fl.scheduled_departure|date:"d M Y" }}</div>
+          </div>
+
+          <div class="route-line">
+            <span>Direct</span>
+            <div class="track"><i class="bi bi-airplane-fill"></i></div>
+            <span>Gate {{ fl.gate.gate_number|default:"TBD" }}</span>
+          </div>
+
+          <div class="end">
+            <div class="route-time">{{ fl.scheduled_arrival|date:"h:i A" }}</div>
+            <div class="route-city">{{ fl.destination_airport.city }} ({{ fl.destination_airport.iata_code }})</div>
+            <div class="route-date">{{ fl.scheduled_arrival|date:"d M Y" }}</div>
+          </div>
+        </div>
+
+        <div class="perk"><i class="bi bi-shield-check"></i> Free cabin baggage + 15 kg check-in</div>
+      </div>
+
+      <!-- Stub: price, seats, action -->
+      <div class="ticket-stub">
+        <div>
+          <div class="stub-price text-primary">₹{{ fl.base_price|floatformat:0 }}</div>
+          <div class="stub-price-sub">per passenger</div>
+        </div>
+
+        <div>
+          <div class="seat-line"><span>Seats left</span><span><b>{{ fl.available_seats_count }}</b> / {{ fl.total_capacity }}</span></div>
+          {% widthratio fl.available_seats_count fl.total_capacity 100 as seat_pct %}
+          <div class="meter {% if fl.available_seats_count == 0 %}alert{% elif seat_pct|add:0 < 20 %}warn{% else %}ok{% endif %}">
+            <span style="width: {{ seat_pct }}%"></span>
+          </div>
+        </div>
+
+        <div class="stub">
+          {% if fl.status == 'DEPARTED' or fl.is_departed %}
+            <button class="btn btn-secondary w-100 opacity-75" disabled>
+              <i class="bi bi-clock-history me-1"></i> Departed (Booking Closed)
+            </button>
+          {% elif fl.status == 'CANCELLED' %}
+            <button class="btn btn-outline-danger w-100" disabled>
+              <i class="bi bi-x-circle me-1"></i> Flight Cancelled
+            </button>
+          {% elif fl.is_boarding_closed or fl.status == 'READY_FOR_DEPARTURE' or fl.status == 'BOARDING_COMPLETED' %}
+            <button class="btn btn-secondary w-100 opacity-75" disabled>
+              <i class="bi bi-door-closed me-1"></i> Boarding Closed (Booking Closed)
+            </button>
+          {% elif fl.available_seats_count <= 0 %}
+            <button class="btn btn-secondary w-100" disabled>
+              <i class="bi bi-person-x me-1"></i> Flight Full
+            </button>
+          {% else %}
+            {% if user.is_authenticated %}
+              {% if fl.status == 'BOARDING' %}
+                <a href="{% url 'flight_book' fl.id %}" class="btn btn-warning text-dark fw-bold w-100 shadow-sm">
+                  <i class="bi bi-ticket-detailed me-1"></i> Book (Boarding Started)
+                </a>
+              {% else %}
+                <a href="{% url 'flight_book' fl.id %}" class="btn btn-primary w-100 shadow-sm">
+                  <i class="bi bi-ticket-detailed me-1"></i> Book Now
+                </a>
+              {% endif %}
+            {% else %}
+              <a href="{% url 'public_flight_details' fl.id %}" class="btn btn-primary w-100 shadow-sm">
+                <i class="bi bi-lock-fill me-1"></i> Sign in to book
+              </a>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+    </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <section class="float-card empty-state">
+    <div class="icon-circle"><i class="bi bi-search"></i></div>
+    <h2 class="h5 fw-bold">No flights match your search</h2>
+    <p class="text-muted small mb-3">Try a different city or date, or clear the filters to see every scheduled flight.</p>
+    <a href="{% url 'flight_search' %}" class="btn btn-outline-primary btn-sm rounded-pill px-4">Clear filters</a>
+  </section>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Swap origin and destination
+  document.getElementById('swap-route')?.addEventListener('click', function () {
+    const a = document.getElementById('f-source');
+    const b = document.getElementById('f-dest');
+    [a.value, b.value] = [b.value, a.value];
+  });
+</script>
+{% endblock %}

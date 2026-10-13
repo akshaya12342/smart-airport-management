@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Airport Baggage Operations & Tracking{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-luggage-fill text-primary me-2"></i> Airport-Wide Baggage Operations & Tracking Hub
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+
+  <!-- Baggage KPI Stats -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card blue shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">TOTAL BAGGAGE PROCESSED</small>
+      <div class="fs-2 fw-bold mt-1">{{ total_count }}</div>
+      <small class="opacity-75">All active bags</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card emerald shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">LOADED ON AIRCRAFT</small>
+      <div class="fs-2 fw-bold mt-1">{{ loaded_count }}</div>
+      <small class="opacity-75">Secured in cargo hold</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card purple shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">DELIVERED TO CAROUSEL</small>
+      <div class="fs-2 fw-bold mt-1">{{ delivered_count }}</div>
+      <small class="opacity-75">Arrivals baggage</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card rose shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">DELAYED / MISROUTED</small>
+      <div class="fs-2 fw-bold mt-1">{{ delayed_count }}</div>
+      <small class="opacity-75">{{ missing_count }} Missing Investigation</small>
+    </div>
+  </div>
+
+</div>
+
+<!-- Baggage Search & Table -->
+<div class="row g-4">
+  <div class="col-12">
+    <div class="card card-ops shadow-sm">
+      <div class="card-ops-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-box-seam text-primary me-2"></i> Baggage Tracking Board</h5>
+        
+        <form method="GET" action="{% url 'manager_baggage' %}" class="d-flex gap-2">
+          <input type="text" name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="Search Tag / Pax / Flight">
+          <select name="status" class="form-select form-select-sm" style="width: 140px;">
+            <option value="">All Statuses</option>
+            {% for val, label in status_choices %}
+              <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
+        </form>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-ops mb-0">
+            <thead>
+              <tr>
+                <th>Baggage Tag</th>
+                <th>Flight No</th>
+                <th>Passenger</th>
+                <th>Weight</th>
+                <th>Current Status</th>
+                <th>AI Risk Score</th>
+                <th>Special Tag</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in baggage_items %}
+                <tr>
+                  <td>
+                    <strong class="text-primary font-monospace fs-6">{{ b.tag_number }}</strong>
+                  </td>
+                  <td>
+                    <strong class="text-dark">{{ b.flight.flight_number }}</strong>
+                    <div class="text-muted small">{{ b.flight.source_airport.iata_code }} → {{ b.flight.destination_airport.iata_code }}</div>
+                  </td>
+                  <td>
+                    <strong class="text-dark">{{ b.passenger.get_full_name|default:b.passenger.username }}</strong>
+                    <div class="text-muted small">Seat: {{ b.booking.seat_number }}</div>
+                  </td>
+                  <td>
+                    <span class="text-dark">{{ b.weight_kg }} kg</span>
+                  </td>
+                  <td>
+                    <span class="badge {% if b.status == 'LOADED' or b.status == 'DELIVERED' %}bg-success{% elif b.status == 'DELAYED' or b.status == 'MISSING' %}bg-danger{% elif b.status == 'LOADING' or b.status == 'AT_GATE' %}bg-primary{% else %}bg-secondary{% endif %}">
+                      {{ b.get_status_display }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if b.risk_level == 'HIGH' %}
+                      <span class="badge bg-danger">HIGH RISK ({{ b.risk_score|floatformat:0 }}%)</span>
+                    {% elif b.risk_level == 'MEDIUM' %}
+                      <span class="badge bg-warning text-dark">MODERATE ({{ b.risk_score|floatformat:0 }}%)</span>
+                    {% else %}
+                      <span class="badge bg-success bg-opacity-25 text-success border border-success">LOW ({{ b.risk_score|floatformat:0 }}%)</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if b.special_handling %}
+                      <span class="badge bg-warning text-dark">FRAGILE / PRIORITY</span>
+                    {% else %}
+                      <span class="text-muted small">Standard</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

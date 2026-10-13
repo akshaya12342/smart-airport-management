@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}Airport-Wide Boarding Monitor - Operations Command{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-people-fill text-primary me-2"></i> Airport-Wide Boarding Operations & Gate Telemetry
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Header Card -->
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm border-0" style="background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white shadow-xs mb-2">
+            <span class="status-indicator-live"></span>
+            <span class="text-primary fw-bold small">Gate Scanner Live Sync</span>
+          </div>
+          <h4 class="fw-bold text-dark mb-1">Departure Gate Boarding Progress Monitor</h4>
+          <p class="text-secondary small mb-0">Live passenger scanning counters, progress telemetry, and boarded vs waiting manifests across departing flights</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'manager_passengers' %}" class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm">
+            <i class="bi bi-person-lines-fill me-1"></i> Full Passenger Manifest
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flight Boarding Cards Grid -->
+  <div class="col-12">
+    <div class="row g-4">
+      {% for item in flight_boarding_data %}
+        <div class="col-lg-6">
+          <div class="card card-ops p-4 shadow-sm h-100 border-0 bg-white">
+            
+            <div class="d-flex justify-content-between align-items-start mb-3 border-bottom pb-3">
+              <div>
+                <span class="badge bg-primary font-monospace mb-1 fs-6">{{ item.flight.flight_number }}</span>
+                <span class="badge bg-light border text-primary ms-1">{{ item.flight.airline.name }}</span>
+                <h4 class="fw-bold text-dark mt-1 mb-0">{{ item.flight.source_airport.city }} → {{ item.flight.destination_airport.city }}</h4>
+                <small class="text-secondary">
+                  Gate: <strong class="text-warning font-monospace fs-6">{{ item.flight.gate.gate_number|default:"TBD" }}</strong> ({{ item.flight.gate.terminal|default:"Terminal 1" }}) &bull; Dep: <strong class="text-dark">{{ item.flight.scheduled_departure|date:"h:i A, d M" }}</strong>
+                </small>
+              </div>
+
+              <div>
+                <span class="badge badge-status {{ item.flight.status_css_class }}">
+                  {{ item.flight.get_status_display }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Boarding Numbers Counters -->
+            <div class="row g-2 text-center mb-3">
+              <div class="col-4 p-2 bg-light rounded border">
+                <small class="text-secondary d-block" style="font-size: 0.7rem;">TOTAL PASSENGERS</small>
+                <span class="fs-4 fw-bold text-dark">{{ item.total_passengers }}</span>
+              </div>
+              <div class="col-4 p-2 bg-light rounded border border-success border-opacity-50" style="background-color: #f0fdf4 !important;">
+                <small class="text-success d-block fw-bold" style="font-size: 0.7rem;">🟢 BOARDED</small>
+                <span class="fs-4 fw-bold text-success">{{ item.boarded_passengers }}</span>
+              </div>
+              <div class="col-4 p-2 bg-light rounded border border-warning border-opacity-50" style="background-color: #fffbeb !important;">
+                <small class="text-warning d-block fw-bold" style="font-size: 0.7rem;">🟡 WAITING</small>
+                <span class="fs-4 fw-bold text-warning">{{ item.pending_passengers }}</span>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small text-secondary mb-1">
+                <span>Boarding Completion</span>
+                <strong class="text-primary">{{ item.boarding_pct }}%</strong>
+              </div>
+              <div class="progress" style="height: 10px; background-color: #e2e8f0; border-radius: 999px;">
+                <div class="progress-bar {% if item.boarding_pct >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ item.boarding_pct }}%;" aria-valuenow="{{ item.boarding_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+            </div>
+
+            <!-- Passenger Roster Preview (Boarded vs Waiting) -->
+            <div class="mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.72rem;">Passenger Roster & Gate Status</small>
+                <a href="{% url 'manager_passengers' %}?tab=manifest&flight_id={{ item.flight.id }}" class="small text-primary text-decoration-none fw-bold">
+                  View Full Manifest <i class="bi bi-arrow-right"></i>
+                </a>
+              </div>
+
+              <div class="border rounded p-2 bg-light" style="max-height: 180px; overflow-y: auto;">
+                {% for b in item.bookings %}
+                  {% with br=b.boarding_record %}
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-light-subtle" style="font-size: 0.8rem;">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary font-monospace" style="min-width: 38px;">{{ b.seat_number }}</span>
+                        <div>
+                          <strong class="text-dark">{{ b.passenger_name }}</strong>
+                          <span class="text-muted font-monospace" style="font-size: 0.7rem;">({{ b.booking_reference }})</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        {% if br and br.boarding_status == 'BOARDED' or b.status == 'BOARDED' %}
+                          <span class="badge bg-success text-white" style="font-size: 0.7rem;">
+                            <i class="bi bi-check-lg"></i> Boarded
+                          </span>
+                        {% elif b.status == 'CHECKED_IN' %}
+                          <span class="badge bg-info text-white" style="font-size: 0.7rem;">
+                            Checked In
+                          </span>
+                        {% else %}
+                          <span class="badge bg-warning text-dark border border-warning" style="font-size: 0.7rem;">
+                            Waiting
+                          </span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endwith %}
+                {% empty %}
+                  <div class="text-center py-3 text-muted small">
+                    No passengers currently booked on this flight.
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Card Footer -->
+            <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+              <small class="text-secondary"><i class="bi bi-airplane me-1"></i>{{ item.flight.aircraft.model|default:"Jetliner" }} ({{ item.flight.total_capacity }} seats)</small>
+              <div class="d-flex gap-1">
+                <a href="{% url 'manager_passengers' %}?tab=manifest&flight_id={{ item.flight.id }}" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Passenger Manifest">
+                  <i class="bi bi-people"></i> Manifest
+                </a>
+                <a href="{% url 'manager_update_flight_status' item.flight.id %}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs">
+                  <i class="bi bi-sliders me-1"></i> Control Status
+                </a>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12 text-center py-5 text-muted">
+          <i class="bi bi-airplane-engines display-4 d-block mb-2 text-secondary opacity-50"></i>
+          No active departing flights available in the boarding monitor.
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Flight Ground Control - {{ flight.flight_number }}{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-airplane-fill text-success me-2"></i> Ground Operations Hub: {{ flight.flight_number }}
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Top Action & Navigation Bar -->
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <a href="{% url 'ground_staff_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Back to Staff Dashboard
+      </a>
+      <div class="d-flex gap-2">
+        <a href="{% url 'staff_boarding_manager' flight.id %}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-person-check-fill me-1"></i> Boarding Console
+        </a>
+        <a href="{% url 'staff_baggage_manager' flight.id %}" class="btn btn-outline-info btn-sm">
+          <i class="bi bi-luggage-fill me-1"></i> Baggage Control
+        </a>
+        <a href="{% url 'staff_turnaround_tracker' flight.id %}" class="btn btn-outline-success btn-sm">
+          <i class="bi bi-arrow-repeat me-1"></i> Turnaround Milestones
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flight Summary Card -->
+  <div class="col-12">
+    <div class="flight-ticket-box p-4 shadow-sm">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <span class="badge bg-primary font-monospace mb-1">{{ flight.flight_number }}</span>
+          <span class="badge bg-light border text-primary ms-1">{{ flight.airline.name }}</span>
+          <h3 class="fw-bold text-dark mt-1 mb-0">{{ flight.source_airport.name }} ({{ flight.source_airport.iata_code }}) → {{ flight.destination_airport.name }} ({{ flight.destination_airport.iata_code }})</h3>
+          <p class="text-secondary small mb-0 mt-1">
+            Gate: <strong class="text-warning">{{ flight.gate.gate_number|default:"TBD" }}</strong> ({{ flight.gate.terminal|default:"Terminal 1" }}) &bull; Scheduled: <strong class="text-dark">{{ flight.scheduled_departure|date:"h:i A, d M Y" }}</strong> &bull; Aircraft: <strong class="text-dark">{{ flight.aircraft.model }} ({{ flight.aircraft.registration_number }})</strong>
+          </p>
+        </div>
+
+        <div class="text-end">
+          <span class="badge badge-status {{ flight.status_css_class }} fs-6">
+            {{ flight.get_status_display }}
+          </span>
+          {% if flight.delay_minutes > 0 %}
+            <div class="text-warning small mt-1 fw-bold">+{{ flight.delay_minutes }} min Delay</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Operational Access Modules -->
+  <div class="col-md-4">
+    <div class="card card-ops h-100 p-4 text-center">
+      <i class="bi bi-people-fill fs-1 text-primary mb-2"></i>
+      <h5 class="fw-bold text-dark">Boarding Operations</h5>
+      <p class="text-secondary small mb-3">Manage passenger manifest, scan boarding passes, track boarded vs pending counts.</p>
+      
+      <div class="p-3 bg-light rounded border mb-3">
+        <div class="fs-4 fw-bold text-primary">{{ boarded_passengers }} / {{ total_passengers }}</div>
+        <small class="text-muted">Boarding Progress: {{ boarding_pct }}%</small>
+      </div>
+
+      <a href="{% url 'staff_boarding_manager' flight.id %}" class="btn btn-primary fw-bold w-100 mt-auto">
+        <i class="bi bi-qr-code-scan me-1"></i> Open Boarding Console
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card card-ops h-100 p-4 text-center">
+      <i class="bi bi-luggage-fill fs-1 text-info mb-2"></i>
+      <h5 class="fw-bold text-dark">Baggage Operations</h5>
+      <p class="text-secondary small mb-3">Track checked-in bags, update loading states, log ramp scans, and investigate risks.</p>
+      
+      <div class="p-3 bg-light rounded border mb-3">
+        <div class="fs-4 fw-bold text-info">{{ baggage_count }}</div>
+        <small class="text-muted">Total Checked Baggage Items</small>
+      </div>
+
+      <a href="{% url 'staff_baggage_manager' flight.id %}" class="btn btn-info text-white fw-bold w-100 mt-auto">
+        <i class="bi bi-box-seam me-1"></i> Open Baggage Manager
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card card-ops h-100 p-4 text-center">
+      <i class="bi bi-arrow-repeat fs-1 text-success mb-2"></i>
+      <h5 class="fw-bold text-dark">Aircraft Turnaround</h5>
+      <p class="text-secondary small mb-3">Update cleaning, refueling, catering, baggage loading, and ready-for-departure timestamps.</p>
+      
+      <div class="p-3 bg-light rounded border mb-3">
+        <div class="fs-4 fw-bold text-success">{{ ground_op.calculate_progress_percentage }}%</div>
+        <small class="text-muted">Turnaround Checklist Completed</small>
+      </div>
+
+      <a href="{% url 'staff_turnaround_tracker' flight.id %}" class="btn btn-success fw-bold w-100 mt-auto">
+        <i class="bi bi-stopwatch me-1"></i> Update Milestones
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

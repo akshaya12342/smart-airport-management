@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}Operations Counter Ticket Booking{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-calculator-fill text-primary me-2"></i> Airport Operations Counter Ticket Booking
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Step 1: Select Active Flight -->
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm">
+      <h5 class="fw-bold text-dark mb-2"><i class="bi bi-airplane-fill text-primary me-2"></i> Step 1: Select Flight for Counter Booking</h5>
+      <p class="text-secondary small mb-3">Simulates airport terminal walk-in counter ticket issuance</p>
+      
+      <form method="GET" class="row g-2 align-items-center">
+        <div class="col-md-9">
+          <select name="flight_id" class="form-select" onchange="this.form.submit()">
+            <option value="">-- Choose an upcoming flight to view seat layout --</option>
+            {% for fl in available_flights %}
+              <option value="{{ fl.id }}" {% if selected_flight and selected_flight.id == fl.id %}selected{% endif %}>
+                {{ fl.flight_number }} &bull; {{ fl.airline.name }} &bull; {{ fl.source_airport.iata_code }} → {{ fl.destination_airport.iata_code }} &bull; Dep: {{ fl.scheduled_departure|date:"d M, h:i A" }} &bull; Available: {{ fl.available_seats_count }}/{{ fl.total_capacity }} seats
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-primary w-100">Load Seat Layout</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if selected_flight %}
+  <!-- Flight Seat Stats Summary (Matching Prompt Example) -->
+  <div class="col-12">
+    <div class="flight-ticket-box p-4 shadow-sm">
+      <div class="row g-3 align-items-center text-center text-md-start">
+        <div class="col-md-4">
+          <span class="badge bg-primary font-monospace mb-1">{{ selected_flight.flight_number }}</span>
+          <h4 class="fw-bold text-dark mb-0">{{ selected_flight.airline.name }} &bull; {{ selected_flight.source_airport.city }} → {{ selected_flight.destination_airport.city }}</h4>
+          <small class="text-secondary">Departure: {{ selected_flight.scheduled_departure|date:"h:i A, d M Y" }} &bull; Gate: {{ selected_flight.gate.gate_number|default:"TBD" }}</small>
+        </div>
+
+        <div class="col-md-8">
+          <div class="row g-2 text-center">
+            <div class="col-4 p-2 bg-light rounded border">
+              <small class="text-secondary d-block" style="font-size: 0.7rem;">TOTAL SEATS</small>
+              <span class="fs-4 fw-bold text-dark">{{ selected_flight.total_capacity }}</span>
+            </div>
+            <div class="col-4 p-2 bg-light rounded border">
+              <small class="text-secondary d-block" style="font-size: 0.7rem;">BOOKED</small>
+              <span class="fs-4 fw-bold text-warning">{{ selected_flight.booked_seats_count }}</span>
+            </div>
+            <div class="col-4 p-2 bg-light rounded border">
+              <small class="text-secondary d-block" style="font-size: 0.7rem;">AVAILABLE</small>
+              <span class="fs-4 fw-bold text-success">{{ selected_flight.available_seats_count }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Seat Map & Passenger Details Form -->
+  <div class="col-lg-7">
+    <div class="card card-ops p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i> Step 2: Choose Passenger Seat</h5>
+        <span class="badge bg-light border text-dark">Select Green Seat</span>
+      </div>
+
+      <div class="cabin-map" style="max-height: 480px; overflow-y: auto;">
+        
+        <!-- Column Header Labels -->
+        <div class="d-flex justify-content-center align-items-center gap-2 mb-3 text-secondary small fw-bold font-monospace">
+          <div style="width: 42px;" class="text-center">A</div>
+          <div style="width: 42px;" class="text-center">B</div>
+          <div style="width: 42px;" class="text-center">C</div>
+          <div style="width: 20px;" class="text-center text-primary">||</div>
+          <div style="width: 42px;" class="text-center">D</div>
+          <div style="width: 42px;" class="text-center">E</div>
+          <div style="width: 42px;" class="text-center">F</div>
+        </div>
+
+        {% for row_num, seats in seat_rows.items %}
+          <div class="seat-row">
+            <span class="text-secondary font-monospace small" style="width: 25px; text-align: right; margin-right: 5px;">{{ row_num }}</span>
+            {% for s in seats %}
+              {% if forloop.counter == 4 %}<div style="width: 20px;"></div>{% endif %}
+              <div class="seat-item {% if s.is_booked %}booked{% endif %}"
+                   data-seat="{{ s.seat_number }}"
+                   {% if not s.is_booked %}onclick="selectCounterSeat('{{ s.seat_number }}')"{% endif %}>
+                {{ s.seat_number }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Passenger Form -->
+  <div class="col-lg-5">
+    <div class="card card-ops sticky-top" style="top: 1rem;">
+      <div class="card-ops-header">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-pencil-square text-primary me-2"></i> Step 3: Unbooked Passenger Details</h5>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST" action="{% url 'manager_counter_booking' %}">
+          {% csrf_token %}
+          <input type="hidden" name="flight_id" value="{{ selected_flight.id }}">
+          
+          <div class="p-3 bg-light rounded border border-primary border-opacity-25 mb-3 d-flex justify-content-between align-items-center">
+            <div>
+              <small class="text-secondary d-block">ALLOCATED SEAT</small>
+              <strong id="counter_seat_text" class="text-primary fs-4">None Selected</strong>
+            </div>
+            <input type="hidden" name="seat_number" id="counter_seat_input" value="" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-dark small fw-bold">Passenger Full Name</label>
+            <input type="text" name="passenger_name" class="form-control" placeholder="e.g. Ramesh Varma" required>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label text-dark small fw-bold">Phone</label>
+              <input type="text" name="passenger_phone" class="form-control" placeholder="+91 98450 00112" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label text-dark small fw-bold">Email</label>
+              <input type="email" name="passenger_email" class="form-control" placeholder="ramesh@email.com" required>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label text-dark small fw-bold">ID / Passport Number</label>
+            <input type="text" name="passenger_id_passport" class="form-control" placeholder="e.g. K9842104" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-bold py-3 shadow-sm" id="counter_submit_btn" disabled>
+            <i class="bi bi-printer-fill me-1"></i> Issue Counter Ticket & Generate PNR
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function selectCounterSeat(seatNum) {
+    document.querySelectorAll('.seat-item.selected').forEach(el => el.classList.remove('selected'));
+    const target = document.querySelector(`.seat-item[data-seat="${seatNum}"]`);
+    if (target && !target.classList.contains('booked')) {
+      target.classList.add('selected');
+      document.getElementById('counter_seat_input').value = seatNum;
+      document.getElementById('counter_seat_text').innerText = `Seat ${seatNum}`;
+      document.getElementById('counter_submit_btn').disabled = false;
+    }
+  }
+</script>
+{% endblock %}

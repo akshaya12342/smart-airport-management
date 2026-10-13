@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Aircraft Fleet Management{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-shield-shaded text-primary me-2"></i> Aircraft Fleet & Seating Configurations
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h4 class="fw-bold text-dark mb-1">Aircraft Fleet Directory</h4>
+          <p class="text-secondary small mb-0">Manage airline fleet registrations, capacity limits, aircraft models, and maintenance states</p>
+        </div>
+        <div>
+          <a href="{% url 'manager_add_aircraft' %}" class="btn btn-primary fw-bold shadow-sm">
+            <i class="bi bi-plus-lg me-1"></i> Register New Aircraft
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card card-ops shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-ops mb-0">
+            <thead>
+              <tr>
+                <th>Registration</th>
+                <th>Model</th>
+                <th>Airline</th>
+                <th>Aircraft Type</th>
+                <th>Seating Capacity</th>
+                <th>Operational Status</th>
+                <th>Configured Seats</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ac in fleet %}
+                <tr>
+                  <td>
+                    <strong class="text-primary font-monospace fs-6">{{ ac.registration_number }}</strong>
+                  </td>
+                  <td>
+                    <strong class="text-dark">{{ ac.model }}</strong>
+                  </td>
+                  <td>
+                    <span class="badge bg-light border text-dark">{{ ac.airline.name }}</span>
+                  </td>
+                  <td>
+                    <span class="text-secondary small">{{ ac.get_aircraft_type_display }}</span>
+                  </td>
+                  <td>
+                    <span class="fw-bold text-success">{{ ac.seating_capacity }}</span> seats
+                  </td>
+                  <td>
+                    <span class="badge {% if ac.status == 'ACTIVE' %}bg-success{% elif ac.status == 'MAINTENANCE' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                      {{ ac.get_status_display }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-secondary font-monospace">{{ ac.seats.count }} Seats in DB</span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

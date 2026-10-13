@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In - Airport Ground Operations System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+  <div class="col-md-9 col-lg-7 col-xl-6">
+    
+    <div class="card card-ops shadow-lg border-0 bg-white">
+      <div class="card-ops-header text-center py-4 border-bottom" style="background: linear-gradient(135deg, #e0f2fe 0%, #ede9fe 100%);">
+        <div class="p-3 bg-white text-primary rounded-circle d-inline-flex mb-2 shadow-sm">
+          <i class="bi bi-airplane-engines-fill fs-2"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-1">Aero Ground Operations System</h4>
+        <p class="text-secondary small mb-0">Role-Based Access &bull; Real-Time Telemetry &bull; Predictive AI Engine</p>
+      </div>
+
+      <div class="card-body p-4 p-md-5">
+        
+        <!-- Standard Login Form -->
+        <form method="POST" action="{% url 'login' %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label text-dark small fw-bold">Username or Email</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border text-muted"><i class="bi bi-person-fill"></i></span>
+              <input type="text" name="username" class="form-control" placeholder="e.g. manager or passenger@airport.com" required>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label text-dark small fw-bold">Password</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border text-muted"><i class="bi bi-lock-fill"></i></span>
+              <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm mb-3">
+            <i class="bi bi-box-arrow-in-right me-1"></i> Sign In to Portal
+          </button>
+        </form>
+
+        <div class="text-center mb-4">
+          <span class="text-muted small">Need an account?</span> 
+          <a href="{% url 'register' %}" class="small text-primary fw-semibold text-decoration-none ms-1">
+            <i class="bi bi-person-plus-fill me-1"></i>Create Account (Passenger / Ground Staff)
+          </a>
+        </div>
+
+        <hr class="border-secondary border-opacity-25 my-4">
+
+        <!-- 1-CLICK QUICK PERSONA DEMO SELECTOR -->
+       
+
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

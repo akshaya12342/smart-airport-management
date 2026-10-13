@@ -1,0 +1,582 @@
+{% extends 'base.html' %}
+
+{% block title %}Passenger Travel Dashboard - Aero Ground{% endblock %}
+
+{% block page_title %}Passenger travel portal{% endblock %}
+{% block page_subtitle %}Live journey updates · gate alerts · baggage tracking{% endblock %}
+
+{# The hero and sidebar already hold the key actions #}
+{% block quick_actions %}{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* =====================================================
+     HERO  (the one animated, memorable moment on this page)
+     ===================================================== */
+  .hero {
+    position: relative; overflow: hidden; isolation: isolate;
+    display: grid; grid-template-columns: 1fr; gap: 1.75rem; align-items: center;
+    padding: 2rem 2rem 2.1rem; margin-bottom: 1.5rem; color: #fff;
+    border-radius: var(--r-lg);
+    background: linear-gradient(125deg, #385c8f 0%, #3b6195 55%, #1f5aa6 100%);
+    box-shadow: var(--float-2);
+    min-height: 270px;
+  }
+  @media (min-width: 992px) { .hero { grid-template-columns: 1.15fr .85fr; padding: 2.4rem 2.6rem; } }
+
+  .hero-sky { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+  .hero-sky svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cloud {
+    position: absolute; width: 220px; height: 70px; border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 70%);
+    filter: blur(6px); animation: drift linear infinite;
+  }
+  .cloud.c1 { top: 12%; left: -240px; animation-duration: 46s; }
+  .cloud.c2 { top: 58%; left: -240px; animation-duration: 62s; animation-delay: -24s; width: 300px; height: 90px; opacity: .8; }
+  .cloud.c3 { top: 80%; left: -240px; animation-duration: 54s; animation-delay: -40s; opacity: .6; }
+  @keyframes drift { to { transform: translateX(calc(100vw + 520px)); } }
+
+  .hero h2 { font-size: clamp(1.55rem, 2.6vw, 2.1rem); font-weight: 800; letter-spacing: -.02em; margin: .9rem 0 .5rem; }
+  .hero p  { color: #bcd0ea; max-width: 46ch; margin: 0 0 1.4rem; line-height: 1.55; }
+  .hero .hello {
+    display: inline-flex; align-items: center; gap: .5rem; font-weight: 600; font-size: .82rem;
+    padding: .35rem .85rem; border-radius: 999px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+  }
+  .hero .hello i { color: var(--signal); }
+  .hero .btn-signal { background: var(--signal); color: var(--ink); font-weight: 800; border: 0; border-radius: 999px; padding: .65rem 1.4rem; box-shadow: 0 10px 24px -10px rgba(245,179,1,.7); transition: transform .15s, box-shadow .15s; }
+  .hero .btn-signal:hover { transform: translateY(-2px); box-shadow: 0 16px 28px -10px rgba(245,179,1,.8); }
+  .hero .btn-ghost { color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: .65rem 1.2rem; font-weight: 600; }
+  .hero .btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+  /* Floating "next flight" glass card */
+  .next-flight {
+    padding: 1.2rem 1.35rem; border-radius: var(--r-lg);
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 30px 50px -24px rgba(0,0,0,.55);
+    animation: bob 6.5s ease-in-out infinite;
+  }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .next-flight .label { font-size: .78rem; color: #bcd0ea; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .next-flight .codes { display: flex; align-items: center; gap: .9rem; margin: .8rem 0; font-size: 2.1rem; font-weight: 800; letter-spacing: -.03em; }
+  .next-flight .codes i { font-size: 1.3rem; color: var(--signal); }
+  .next-flight .city { font-size: .78rem; color: #bcd0ea; font-weight: 500; letter-spacing: 0; display: block; margin-top: -.15rem; }
+  .next-flight .meta { display: flex; gap: 1.2rem; flex-wrap: wrap; font-size: .82rem; color: #dbe7f7; padding-top: .8rem; border-top: 1px solid rgba(255,255,255,.18); }
+  .next-flight .meta b { color: #fff; }
+  .next-flight a.stretched { color: inherit; text-decoration: none; }
+
+  /* =====================================================
+     TRIP CARDS
+     ===================================================== */
+  .section-title { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 0 1rem; }
+  .section-title h2 { font-size: 1.05rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: .6rem; }
+  .section-title h3 { font-size: .95rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: .5rem; color: var(--text); }
+  #my-bookings { scroll-margin-top: calc(var(--topbar-h) + 1rem); }
+
+  .trip { padding: 0; overflow: hidden; height: auto; }
+  .trip::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--edge, var(--ok));
+  }
+  .trip.edge-warn  { --edge: var(--warn); }
+  .trip.edge-alert { --edge: var(--alert); }
+  .trip.edge-info  { --edge: var(--info); }
+
+  .trip-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: .75rem; padding: 1.25rem 1.5rem .25rem 1.6rem; }
+  .trip-head h3 { font-size: 1.15rem; font-weight: 800; margin: .5rem 0 0; }
+  .ref-chip { display: inline-flex; align-items: center; gap: .4rem; font-size: .76rem; font-weight: 600; padding: .25rem .65rem; border-radius: 8px; background: #f1f5fb; color: var(--muted); }
+  .ref-chip b { color: var(--text); letter-spacing: .02em; }
+
+  .trip-body { padding: .75rem 1.5rem 1.25rem 1.6rem; display: grid; gap: 1.1rem; }
+
+  .trip-route { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem; }
+  .trip-route .iata { font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+  .trip-route .city { font-size: .8rem; color: var(--muted); margin-top: .3rem; }
+  .trip-route .end { text-align: right; }
+  .trip-route .mid { display: flex; flex-direction: column; align-items: center; gap: .3rem; font-size: .72rem; color: var(--muted); }
+  .trip-route .mid .track { position: relative; width: 100%; height: 2px; background: repeating-linear-gradient(90deg, #c4d0e2 0 6px, transparent 6px 12px); }
+  .trip-route .mid .track i { position: absolute; left: 0; top: 50%; transform: translateY(-50%) rotate(90deg); background: var(--surface); padding: 0 .3rem; color: var(--brand); animation: cruise 5s ease-in-out infinite alternate; }
+  @keyframes cruise { from { left: 0; } to { left: calc(100% - 1.6rem); } }
+
+  .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: .65rem; }
+  @media (min-width: 576px) { .tiles { grid-template-columns: repeat(4, 1fr); } }
+  .tile { padding: .65rem .85rem; border-radius: var(--r-sm); background: #f6f8fc; border: 1px solid var(--line); }
+  .tile small { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; }
+  .tile strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
+  .tile.seat { background: var(--info-soft); border-color: #cddffb; } .tile.seat strong { color: var(--info); }
+  .tile.gate { background: var(--warn-soft); border-color: #f4dfae; }
+
+  /* Journey progress */
+  .steps { list-style: none; display: flex; margin: 0; padding: 0; }
+  .steps li { position: relative; flex: 1; text-align: center; font-size: .72rem; color: var(--muted); font-weight: 600; padding-top: 1.35rem; }
+  .steps li::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid #c4d0e2; z-index: 1; }
+  .steps li::after  { content: ''; position: absolute; top: 5px; left: 50%; width: 100%; height: 2px; background: #dbe3ef; }
+  .steps li:last-child::after { display: none; }
+  .steps li.done { color: var(--text); }
+  .steps li.done::before { background: var(--brand); border-color: var(--brand); }
+  .steps li.done::after  { background: var(--brand); }
+  .steps li.now::before  { box-shadow: 0 0 0 5px rgba(31,111,235,.18); animation: pulse-ring 2s ease-out infinite; }
+  @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(31,111,235,.4); } 100% { box-shadow: 0 0 0 10px rgba(31,111,235,0); } }
+
+  .status-box { padding: .95rem 1.1rem; border-radius: var(--r-sm); background: #f6f8fc; border: 1px solid var(--line); display: grid; gap: .6rem; }
+  @media (min-width: 576px) { .status-box { grid-template-columns: 1.2fr 1fr; } }
+  .status-box .k { font-size: .78rem; color: var(--muted); }
+  .status-box .v { font-weight: 700; }
+  .status-box .side { display: grid; gap: .35rem; font-size: .82rem; }
+  @media (min-width: 576px) { .status-box .side { text-align: right; } }
+
+  .notice { padding: .7rem .95rem; border-radius: var(--r-sm); font-size: .84rem; background: var(--alert-soft); color: var(--alert); border: 1px solid #f1c4c4; }
+
+  .trip-foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+  .trip-foot .btn { border-radius: 999px; font-weight: 600; }
+
+  /* Completed history rows */
+  .history-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; padding: .85rem 1.2rem; height: auto; }
+  .history-row:hover { transform: translateY(-2px); }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 3.2rem 1.5rem; height: auto; }
+  .empty-state .icon-circle { width: 68px; height: 68px; font-size: 1.9rem; margin: 0 auto 1rem; animation: bob 5s ease-in-out infinite; }
+
+  /* Sidebar search */
+  .search-side { position: sticky; top: calc(var(--topbar-h) + 1rem); height: auto; }
+  .search-side .panel-head { background: #f7faff; }
+  .search-side .form-label { font-size: .78rem; font-weight: 700; color: var(--muted); }
+  .search-side .form-select, .search-side .form-control, .search-side .input-group-text { border-color: var(--line); padding-top: .6rem; padding-bottom: .6rem; }
+  .search-side .input-group-text { background: #fbfcfe; color: var(--brand); }
+
+  /* Mobile floating action button */
+  .fab {
+    position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 40;
+    display: inline-flex; align-items: center; gap: .5rem; padding: .85rem 1.2rem; border-radius: 999px;
+    background: var(--brand); color: #fff; font-weight: 700; text-decoration: none;
+    box-shadow: 0 16px 30px -10px rgba(31,111,235,.7);
+    animation: bob 4.5s ease-in-out infinite;
+  }
+  .fab:hover { color: #fff; }
+
+  @media (max-width: 575.98px) {
+    .hero { padding: 1.5rem 1.25rem; }
+    .trip-route .iata { font-size: 1.5rem; }
+    .trip-head, .trip-body { padding-left: 1.25rem; padding-right: 1.1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cloud, .next-flight, .fab, .empty-state .icon-circle, .trip-route .mid .track i, .steps li.now::before { animation: none !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ========== HERO ========== -->
+<section class="hero" aria-label="Welcome">
+  <div class="hero-sky" aria-hidden="true">
+    <span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span>
+    <svg viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid slice">
+      <path id="hero-arc" d="M -40 270 C 260 40, 640 20, 1040 150" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="2" stroke-dasharray="3 9" stroke-linecap="round"/>
+      <g fill="#f5b301">
+        <path d="M0 -9 L5 -2 L16 4 L16 7 L5 4 L3 10 L7 13 L7 15 L0 13 L-7 15 L-7 13 L-3 10 L-5 4 L-16 7 L-16 4 L-5 -2 Z" transform="rotate(90) scale(1.35)">
+          <animateMotion dur="14s" repeatCount="indefinite" rotate="auto" path="M -40 270 C 260 40, 640 20, 1040 150"/>
+        </path>
+      </g>
+    </svg>
+  </div>
+
+  <div>
+    <span class="hello"><i class="bi bi-stars"></i> Welcome back, {{ user.get_full_name|default:user.username }}</span>
+    <h2>Your journey, live from the airport</h2>
+    <p>Track gate changes, boarding, delays and baggage for every flight you've booked, and find your next trip in seconds.</p>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'flight_search' %}" class="btn btn-signal"><i class="bi bi-airplane-engines-fill me-1"></i> Book a new flight</a>
+      <a href="#my-bookings" class="btn btn-ghost"><i class="bi bi-ticket-perforated me-1"></i> My bookings</a>
+    </div>
+  </div>
+
+  {% with nxt=upcoming_bookings.0 %}
+  <div>
+    {% if nxt and nxt.flight_valid %}
+    <div class="next-flight">
+      <div class="label">
+        <span><i class="bi bi-calendar-check me-1"></i> Your next flight</span>
+        <span class="status-pill {% if nxt.flight.status == 'CANCELLED' %}cancelled{% elif nxt.flight.status == 'DELAYED' or nxt.flight.delay_minutes > 0 %}delayed{% elif nxt.flight.status == 'BOARDING' %}boarding{% else %}on-time{% endif %}" style="background: rgba(255,255,255,.14); color: #fff;">{{ nxt.flight.get_status_display }}</span>
+      </div>
+      <div class="codes">
+        <span>{{ nxt.flight.source_airport.iata_code }}<span class="city">{{ nxt.flight.source_airport.city }}</span></span>
+        <i class="bi bi-airplane-fill"></i>
+        <span>{{ nxt.flight.destination_airport.iata_code }}<span class="city">{{ nxt.flight.destination_airport.city }}</span></span>
+      </div>
+      <div class="meta">
+        <span>{{ nxt.flight.airline.iata_code }}-{{ nxt.flight.flight_number }}</span>
+        <span><b>{{ nxt.flight.scheduled_departure|date:"d M, h:i A" }}</b></span>
+        <span>Gate <b>{{ nxt.flight.gate.gate_number|default:"TBD" }}</b></span>
+        <span>Seat <b>{{ nxt.booking.seat_number }}</b></span>
+      </div>
+    </div>
+    {% else %}
+    <div class="next-flight">
+      <div class="label"><span><i class="bi bi-calendar-plus me-1"></i> No upcoming trip</span></div>
+      <p class="mb-0 mt-2" style="color:#dbe7f7;">Nothing booked yet. Search the live schedule and your next flight will appear here.</p>
+    </div>
+    {% endif %}
+  </div>
+  {% endwith %}
+</section>
+
+<!-- ========== KPI STRIP ========== -->
+<section class="bento" aria-label="Trip summary">
+  <article class="kpi-card is-info span-4">
+    <div class="kpi-top"><div class="icon-circle"><i class="bi bi-ticket-perforated-fill"></i></div></div>
+    <p class="kpi-value" data-count="{{ total_bookings_count|default:0 }}">{{ total_bookings_count|default:0 }}</p>
+    <p class="kpi-label">Total bookings</p>
+  </article>
+  <article class="kpi-card is-ok span-4">
+    <div class="kpi-top"><div class="icon-circle ok"><i class="bi bi-airplane-fill"></i></div></div>
+    <p class="kpi-value" data-count="{{ upcoming_bookings|length }}">{{ upcoming_bookings|length }}</p>
+    <p class="kpi-label">Upcoming flights</p>
+  </article>
+  <article class="kpi-card is-warn span-4">
+    <div class="kpi-top"><div class="icon-circle warn"><i class="bi bi-check2-circle"></i></div></div>
+    <p class="kpi-value" data-count="{{ completed_bookings|length }}">{{ completed_bookings|length }}</p>
+    <p class="kpi-label">Completed flights</p>
+  </article>
+</section>
+
+<!-- ========== MAIN GRID ========== -->
+<div class="bento mt-4">
+
+  <!-- ---------- MY BOOKED FLIGHTS ---------- -->
+  <section class="span-8" id="my-bookings" style="height:auto;">
+    <div class="section-title">
+      <h2><i class="bi bi-ticket-perforated-fill text-primary"></i> My booked flights</h2>
+      <span class="badge-soft">{{ total_bookings_count }} total</span>
+    </div>
+
+    {% if not has_bookings %}
+    <div class="float-card empty-state">
+      <div class="icon-circle"><i class="bi bi-airplane"></i></div>
+      <h3 class="h5 fw-bold">NO ACTIVE BOOKINGS</h3>
+      <p class="text-secondary mx-auto mb-4" style="max-width: 440px;">
+        You currently do not have any booked flights. Search the live flight schedule and book your next journey.
+      </p>
+      <a href="{% url 'flight_search' %}" class="btn btn-primary px-4 fw-bold rounded-pill"><i class="bi bi-search me-1"></i> Book a Flight Now</a>
+    </div>
+    {% else %}
+
+    <!-- Upcoming -->
+    <div class="section-title"><h3><i class="bi bi-clock-history text-primary"></i> Upcoming flights</h3></div>
+
+    {% if upcoming_bookings %}
+      <div class="d-grid gap-3 mb-4">
+        {% for card in upcoming_bookings %}
+
+          {% if card.flight_valid %}
+          <article class="float-card trip {% if card.flight.status == 'CANCELLED' %}edge-alert{% elif card.flight.status == 'DELAYED' or card.flight.delay_minutes > 0 %}edge-warn{% elif card.flight.status == 'BOARDING' or card.flight.status == 'BOARDING_COMPLETED' or card.flight.status == 'READY_FOR_DEPARTURE' %}edge-info{% endif %}">
+
+            <div class="trip-head">
+              <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <span class="ref-chip"><i class="bi bi-upc-scan"></i> Booking <b class="font-monospace">{{ card.booking.booking_reference }}</b></span>
+                  <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-0 rounded-pill small" style="font-size: 0.72rem;">
+                    <i class="bi bi-check-circle-fill me-1"></i>Flight Found ✓
+                  </span>
+                </div>
+                <h3>{{ card.flight.airline.name }} &bull; {{ card.flight.flight_number }}</h3>
+              </div>
+
+              {% if card.flight.status == 'DELAYED' or card.flight.delay_minutes > 0 %}
+                <span class="status-pill delayed">DELAYED (+{{ card.flight.delay_minutes }}m)</span>
+              {% elif card.flight.status == 'CANCELLED' %}
+                <span class="status-pill cancelled">Cancelled</span>
+              {% elif card.flight.status == 'BOARDING' %}
+                <span class="status-pill boarding">Boarding</span>
+              {% elif card.flight.status == 'BOARDING_COMPLETED' %}
+                <span class="status-pill boarding">Boarding completed</span>
+              {% elif card.flight.status == 'READY_FOR_DEPARTURE' %}
+                <span class="status-pill boarding">Ready for departure</span>
+              {% else %}
+                <span class="status-pill on-time">On time</span>
+              {% endif %}
+            </div>
+
+            <div class="trip-body">
+              <!-- Route -->
+              <div class="trip-route">
+                <div>
+                  <div class="iata">{{ card.flight.source_airport.iata_code }}</div>
+                  <div class="city">{{ card.flight.source_airport.city }}</div>
+                </div>
+                <div class="mid">
+                  <div class="track"><i class="bi bi-airplane-fill"></i></div>
+                  <span>{{ card.flight.flight_type }}</span>
+                </div>
+                <div class="end">
+                  <div class="iata">{{ card.flight.destination_airport.iata_code }}</div>
+                  <div class="city">{{ card.flight.destination_airport.city }}</div>
+                </div>
+              </div>
+
+              <!-- Key facts -->
+              <div class="tiles">
+                <div class="tile"><small>Travel date</small><strong>{{ card.flight.scheduled_departure|date:"d M Y" }}</strong></div>
+                <div class="tile"><small>Departure</small><strong>{{ card.flight.scheduled_departure|date:"h:i A" }}</strong></div>
+                <div class="tile seat"><small>Seat</small><strong>{{ card.booking.seat_number }}</strong></div>
+                <div class="tile gate"><small>Gate</small><strong>{{ card.flight.gate.gate_number|default:"TBD" }}</strong></div>
+              </div>
+
+              <!-- Journey progress -->
+              {% if card.flight.status != 'CANCELLED' %}
+              <ol class="steps" aria-label="Journey progress">
+                <li class="done {% if card.flight.status != 'BOARDING' and card.flight.status != 'BOARDING_COMPLETED' and card.flight.status != 'READY_FOR_DEPARTURE' %}now{% endif %}">Booked</li>
+                <li class="{% if card.flight.status == 'BOARDING' or card.flight.status == 'BOARDING_COMPLETED' or card.flight.status == 'READY_FOR_DEPARTURE' %}done{% endif %} {% if card.flight.status == 'BOARDING' %}now{% endif %}">Boarding</li>
+                <li class="{% if card.flight.status == 'BOARDING_COMPLETED' or card.flight.status == 'READY_FOR_DEPARTURE' %}done{% endif %} {% if card.flight.status == 'BOARDING_COMPLETED' %}now{% endif %}">Boarding done</li>
+                <li class="{% if card.flight.status == 'READY_FOR_DEPARTURE' %}done now{% endif %}">Ready to depart</li>
+              </ol>
+              {% endif %}
+
+              <!-- Departure, delay, boarding & baggage -->
+              <div class="status-box">
+                <div>
+                  <div class="k">Scheduled departure: <span class="v">{{ card.flight.scheduled_departure|date:"h:i A" }}</span></div>
+                  {% if card.delay_info %}
+                    <div class="v mt-1">
+                      Expected departure: {{ card.delay_info.expected_departure|date:"h:i A" }}
+                      <span class="badge-soft warn ms-1">Delay {{ card.delay_info.delay_minutes }} min</span>
+                    </div>
+                    <div class="k mt-1">Reason: {{ card.delay_info.reason }}</div>
+                  {% else %}
+                    <div class="mt-1 text-success fw-semibold small"><i class="bi bi-check-circle-fill me-1"></i>Expected {{ card.flight.scheduled_departure|date:"h:i A" }} · on schedule</div>
+                  {% endif %}
+                </div>
+                <div class="side">
+                  <div><i class="bi bi-people text-primary me-1"></i><span class="k">Boarding</span> <span class="v">{{ card.boarding_status }}</span></div>
+                  <div><i class="bi bi-luggage text-primary me-1"></i><span class="k">Baggage</span> <span class="v">{{ card.baggage_status }}</span></div>
+                </div>
+              </div>
+
+              {% if card.is_cancelled %}
+              <div class="notice"><strong>Cancellation notice:</strong> {{ card.cancellation_reason|default:"Flight cancelled due to an operational issue." }}</div>
+              {% endif %}
+
+              <!-- Actions -->
+              <div class="trip-foot">
+                <span class="small text-muted">Booking status <span class="badge-soft ms-1 {% if card.booking.status == 'CANCELLED' %}alert{% endif %}">{{ card.booking.get_status_display }}</span></span>
+                <div class="d-flex gap-2 flex-wrap">
+                  {% if card.booking.status != 'CANCELLED' %}
+                  <button type="button" class="btn btn-sm btn-outline-danger px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#dashCancelModal{{ card.booking.id }}">
+                    <i class="bi bi-x-circle me-1"></i> Cancel
+                  </button>
+                  {% endif %}
+                  <a href="{% url 'booking_ticket' card.booking.id %}" class="btn btn-sm btn-outline-secondary px-3"><i class="bi bi-printer me-1"></i> Digital ticket</a>
+                  <a href="{% url 'passenger_flight_details' card.booking.id %}" class="btn btn-sm btn-primary px-3"><i class="bi bi-radar me-1"></i> View flight details</a>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          {% if card.booking.status != 'CANCELLED' %}
+          <!-- Cancel Confirmation Modal for Booking #{{ card.booking.id }} -->
+          <div class="modal fade" id="dashCancelModal{{ card.booking.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                  <h5 class="modal-title fw-bold text-danger d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-octagon-fill fs-4"></i> Cancel Flight Booking
+                  </h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                  <p class="text-secondary mb-3">
+                    Are you sure you want to cancel booking <strong>{{ card.booking.booking_reference }}</strong>? Your seat will be released immediately for other passengers.
+                  </p>
+                  <div class="p-3 bg-light rounded-3 border mb-3">
+                    <div class="row g-2 small">
+                      <div class="col-6">
+                        <span class="text-muted d-block font-monospace" style="font-size: 0.72rem;">FLIGHT</span>
+                        <strong class="text-dark">{{ card.flight.airline.name }} &bull; {{ card.flight.flight_number }}</strong>
+                      </div>
+                      <div class="col-6">
+                        <span class="text-muted d-block font-monospace" style="font-size: 0.72rem;">ROUTE</span>
+                        <strong class="text-dark">{{ card.flight.source_airport.iata_code }} → {{ card.flight.destination_airport.iata_code }}</strong>
+                      </div>
+                      <div class="col-6">
+                        <span class="text-muted d-block font-monospace" style="font-size: 0.72rem;">RELEASED SEAT</span>
+                        <span class="badge bg-primary px-2 py-1 font-monospace">{{ card.booking.seat_number }}</span>
+                      </div>
+                      <div class="col-6">
+                        <span class="text-muted d-block font-monospace" style="font-size: 0.72rem;">REFUND AMOUNT</span>
+                        <strong class="text-success font-monospace">₹{{ card.booking.ticket_price|floatformat:2 }}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="alert alert-warning py-2 px-3 small border-0 rounded-3 mb-0 d-flex align-items-start gap-2">
+                    <i class="bi bi-info-circle-fill text-warning flex-shrink-0 mt-1"></i>
+                    <div>
+                      Seat <strong>{{ card.booking.seat_number }}</strong> will immediately become available in the live flight booking seat map.
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
+                  <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Keep Booking</button>
+                  <form method="POST" action="{% url 'passenger_cancel_booking' card.booking.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+                      <i class="bi bi-trash3-fill me-1"></i> Yes, Cancel Ticket
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% else %}
+          <!-- Missing flight record -->
+          <article class="float-card trip edge-warn" style="height:auto;">
+            <div class="trip-body pt-4 ps-4">
+              <div class="d-flex align-items-start gap-3">
+                <div class="icon-circle warn flex-shrink-0"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                <div>
+                  <h3 class="h6 fw-bold mb-1">Flight information unavailable</h3>
+                  <p class="text-secondary small mb-2">The flight for booking <strong>{{ card.booking.booking_reference }}</strong> (seat {{ card.booking.seat_number }}) is not in the current flight schedule.</p>
+                  <p class="text-muted small mb-3">Contact the airport operations control centre for help.</p>
+                  <a href="{% url 'booking_ticket' card.booking.id %}" class="btn btn-sm btn-outline-warning rounded-pill px-3">View archived ticket</a>
+                </div>
+              </div>
+            </div>
+          </article>
+          {% endif %}
+
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="float-card p-4 text-secondary small mb-4" style="height:auto;">
+        No upcoming flights. Check your completed flights below or book a new journey.
+      </div>
+    {% endif %}
+
+    <!-- Completed -->
+    {% if completed_bookings %}
+    <div class="section-title mt-4"><h3><i class="bi bi-check-circle-fill text-success"></i> Completed flight history</h3></div>
+    <div class="d-grid gap-2">
+      {% for card in completed_bookings %}
+      <div class="float-card history-row">
+        <div>
+          <strong>{{ card.flight.airline.iata_code }}-{{ card.flight.flight_number }}</strong>
+          <span class="text-muted mx-2">&bull;</span>
+          <span class="text-secondary">{{ card.flight.source_airport.city }} → {{ card.flight.destination_airport.city }}</span>
+          <span class="text-muted small ms-2 font-monospace">{{ card.flight.scheduled_departure|date:"d M Y" }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge-soft {% if card.booking.status == 'CANCELLED' %}alert{% endif %}">{{ card.booking.get_status_display }}</span>
+          <a href="{% url 'booking_ticket' card.booking.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Ticket</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% endif %}
+  </section>
+
+  <!-- ---------- QUICK SEARCH ---------- -->
+  <aside class="span-4" style="height:auto; align-self: start;">
+    <div class="panel search-side">
+      <div class="panel-head">
+        <h2><i class="bi bi-search text-primary me-2"></i>Book a new flight</h2>
+        <span class="badge-soft ok">Live</span>
+      </div>
+      <div class="panel-body">
+        <form method="GET" action="{% url 'flight_search' %}">
+          <div class="mb-3">
+            <label class="form-label" for="q-source">From</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-geo-alt-fill"></i></span>
+              <select id="q-source" name="source" class="form-select shadow-none">
+                <option value="">Any origin</option>
+                <optgroup label="Indian domestic airports">
+                  {% for apt in all_airports %}{% if apt.country == 'India' %}
+                    <option value="{{ apt.iata_code }}">{{ apt.city }} ({{ apt.iata_code }}) &bull; {{ apt.name }}</option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+                <optgroup label="International hubs">
+                  {% for apt in all_airports %}{% if apt.country != 'India' %}
+                    <option value="{{ apt.iata_code }}">{{ apt.city }} ({{ apt.iata_code }}) &bull; {{ apt.name }}</option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="q-dest">To</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-pin-map-fill"></i></span>
+              <select id="q-dest" name="destination" class="form-select shadow-none">
+                <option value="">Any destination</option>
+                <optgroup label="Indian domestic airports">
+                  {% for apt in all_airports %}{% if apt.country == 'India' %}
+                    <option value="{{ apt.iata_code }}">{{ apt.city }} ({{ apt.iata_code }}) &bull; {{ apt.name }}</option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+                <optgroup label="International hubs">
+                  {% for apt in all_airports %}{% if apt.country != 'India' %}
+                    <option value="{{ apt.iata_code }}">{{ apt.city }} ({{ apt.iata_code }}) &bull; {{ apt.name }}</option>
+                  {% endif %}{% endfor %}
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="q-date">Travel date</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+              <input id="q-date" type="date" name="travel_date" class="form-control shadow-none">
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label" for="q-airline">Airline (optional)</label>
+            <input id="q-airline" type="text" name="airline" class="form-control shadow-none" placeholder="e.g. Air India, IndiGo">
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-bold py-2 rounded-3">
+            <i class="bi bi-search me-1"></i> Search available flights
+          </button>
+        </form>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- Mobile floating action -->
+<a href="{% url 'flight_search' %}" class="fab d-lg-none"><i class="bi bi-plus-lg"></i> Book flight</a>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function () {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Pause the hero plane for users who prefer reduced motion
+    if (reduce) {
+      const svg = document.querySelector('.hero-sky svg');
+      if (svg && svg.pauseAnimations) svg.pauseAnimations();
+      return;
+    }
+
+    // Count up the summary numbers once on load
+    document.querySelectorAll('[data-count]').forEach(function (el) {
+      const target = parseInt(el.dataset.count, 10);
+      if (!target || target < 1) return;
+      const dur = 800, start = performance.now();
+      (function step(now) {
+        const t = Math.min((now - start) / dur, 1);
+        el.textContent = Math.round(target * (1 - Math.pow(1 - t, 3)));
+        if (t < 1) requestAnimationFrame(step);
+      })(start);
+    });
+  })();
+</script>
+{% endblock %}

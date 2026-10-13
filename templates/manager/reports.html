@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% block title %}Operations Reports & Analytics Hub{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-file-earmark-bar-graph-fill text-primary me-2"></i> Operations Executive Reports & Analytics Hub
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+
+  <!-- Hub Header & Print Controls -->
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h4 class="fw-bold text-dark mb-1">Airport Operations Executive Reports</h4>
+          <p class="text-secondary small mb-0">Generated on {{ now|date:"d M Y, h:i A" }} &bull; Complete ground turnaround, flights, and revenue audit</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button onclick="window.print()" class="btn btn-primary fw-bold shadow-sm">
+            <i class="bi bi-printer-fill me-1"></i> Print / Export Executive Report
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Executive Summary Cards -->
+  <div class="col-md-3">
+    <div class="stat-card blue p-3 shadow-sm">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">TOTAL AIRLINE REVENUE</small>
+      <div class="fs-2 fw-bold mt-1">₹{{ total_revenue|floatformat:0 }}</div>
+      <small class="opacity-75">Online & Counter Bookings</small>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="stat-card emerald p-3 shadow-sm">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">TOTAL PASSENGERS</small>
+      <div class="fs-2 fw-bold mt-1">{{ bookings.count }}</div>
+      <small class="opacity-75">Processed & Confirmed</small>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="stat-card purple p-3 shadow-sm">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">GATE UTILIZATION</small>
+      <div class="fs-2 fw-bold mt-1">75.0%</div>
+      <small class="opacity-75">{{ gates.count }} Terminal Gates</small>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="stat-card amber p-3 shadow-sm">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">STAFF ON ROSTER</small>
+      <div class="fs-2 fw-bold mt-1">{{ staff.count }}</div>
+      <small class="opacity-75">Active Ground Personnel</small>
+    </div>
+  </div>
+
+</div>
+
+<!-- REPORT TABS & TABLES -->
+<div class="row g-4">
+  <div class="col-12">
+    <div class="card card-ops shadow-sm">
+      
+      <div class="card-ops-header border-bottom">
+        <ul class="nav nav-pills card-header-pills" id="reportTabs" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link active fw-bold" id="flights-tab" data-bs-toggle="tab" data-bs-target="#flights-report" type="button">
+              <i class="bi bi-airplane me-1"></i> Daily Flight Report
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link fw-bold" id="occupancy-tab" data-bs-toggle="tab" data-bs-target="#occupancy-report" type="button">
+              <i class="bi bi-person-check me-1"></i> Seat Occupancy Report
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link fw-bold" id="gates-tab" data-bs-toggle="tab" data-bs-target="#gates-report" type="button">
+              <i class="bi bi-door-open me-1"></i> Gate Utilization Report
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link fw-bold" id="baggage-tab" data-bs-toggle="tab" data-bs-target="#baggage-report" type="button">
+              <i class="bi bi-luggage me-1"></i> Baggage Audit Report
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="tab-content" id="reportTabContent">
+          
+          <!-- TAB 1: FLIGHTS REPORT -->
+          <div class="tab-pane fade show active p-3" id="flights-report" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-ops mb-0">
+                <thead>
+                  <tr>
+                    <th>Flight No</th>
+                    <th>Airline</th>
+                    <th>Route</th>
+                    <th>Departure</th>
+                    <th>Gate</th>
+                    <th>Status</th>
+                    <th>Delay</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for f in flights %}
+                    <tr>
+                      <td><strong class="text-primary font-monospace">{{ f.flight_number }}</strong></td>
+                      <td>{{ f.airline.name }}</td>
+                      <td>{{ f.source_airport.iata_code }} → {{ f.destination_airport.iata_code }}</td>
+                      <td>{{ f.scheduled_departure|date:"d M Y, h:i A" }}</td>
+                      <td>{{ f.gate.gate_number|default:"TBD" }}</td>
+                      <td><span class="badge badge-status {{ f.status_css_class }}">{{ f.get_status_display }}</span></td>
+                      <td>{% if f.delay_minutes > 0 %}<span class="text-warning fw-bold">+{{ f.delay_minutes }}m</span>{% else %}<span class="text-success">0m</span>{% endif %}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 2: SEAT OCCUPANCY REPORT -->
+          <div class="tab-pane fade p-3" id="occupancy-report" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-ops mb-0">
+                <thead>
+                  <tr>
+                    <th>Flight</th>
+                    <th>Aircraft Model</th>
+                    <th>Seating Capacity</th>
+                    <th>Booked Seats</th>
+                    <th>Available Seats</th>
+                    <th>Load Factor (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for f in flights %}
+                    <tr>
+                      <td><strong class="text-primary font-monospace">{{ f.flight_number }}</strong></td>
+                      <td>{{ f.aircraft.model|default:"Jetliner" }}</td>
+                      <td>{{ f.total_capacity }}</td>
+                      <td><strong class="text-dark">{{ f.booked_seats_count }}</strong></td>
+                      <td><span class="text-success">{{ f.available_seats_count }}</span></td>
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="progress flex-grow-1" style="height: 6px; background-color: #e2e8f0;">
+                            <div class="progress-bar bg-primary" style="width: {% widthratio f.booked_seats_count f.total_capacity 100 %}%;"></div>
+                          </div>
+                          <span class="small font-monospace">{% widthratio f.booked_seats_count f.total_capacity 100 %}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 3: GATE REPORT -->
+          <div class="tab-pane fade p-3" id="gates-report" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-ops mb-0">
+                <thead>
+                  <tr>
+                    <th>Gate</th>
+                    <th>Terminal</th>
+                    <th>Gate Type</th>
+                    <th>Compatibility</th>
+                    <th>Current Status</th>
+                    <th>Assigned Flights</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for g in gates %}
+                    <tr>
+                      <td><strong class="text-warning font-monospace fs-6">{{ g.gate_number }}</strong></td>
+                      <td>{{ g.terminal }}</td>
+                      <td>{{ g.get_gate_type_display }}</td>
+                      <td>{{ g.get_compatibility_display }}</td>
+                      <td><span class="badge {% if g.status == 'AVAILABLE' %}bg-success{% elif g.status == 'OCCUPIED' %}bg-primary{% else %}bg-secondary{% endif %}">{{ g.get_status_display }}</span></td>
+                      <td>{{ g.flights.count }} flight(s)</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 4: BAGGAGE REPORT -->
+          <div class="tab-pane fade p-3" id="baggage-report" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-ops mb-0">
+                <thead>
+                  <tr>
+                    <th>Baggage Tag</th>
+                    <th>Flight</th>
+                    <th>Passenger</th>
+                    <th>Weight</th>
+                    <th>Status</th>
+                    <th>Risk Assessment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for b in baggage %}
+                    <tr>
+                      <td><strong class="text-primary font-monospace">{{ b.tag_number }}</strong></td>
+                      <td>{{ b.flight.flight_number }}</td>
+                      <td>{{ b.passenger.get_full_name|default:b.passenger.username }}</td>
+                      <td>{{ b.weight_kg }} kg</td>
+                      <td><span class="badge bg-secondary">{{ b.get_status_display }}</span></td>
+                      <td>{{ b.risk_level }} ({{ b.risk_score|floatformat:0 }}%)</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

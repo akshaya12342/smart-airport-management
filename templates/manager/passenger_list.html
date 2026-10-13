@@ -1,0 +1,541 @@
+{% extends 'base.html' %}
+
+{% block title %}Passenger Manifest & User Directory - Airport Operations Control{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-people-fill text-primary me-2"></i> Passenger Manifest & User Directory Control Desk
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Header Overview Card -->
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm border-0" style="background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white shadow-xs mb-2">
+            <span class="status-indicator-live"></span>
+            <span class="text-primary fw-bold small">Live Passenger & User Telemetry</span>
+          </div>
+          <h4 class="fw-bold text-dark mb-1">Passenger Manifest & User Operations Directory</h4>
+          <p class="text-secondary small mb-0">Track which passenger is on which flight, monitor real-time boarded vs waiting passengers, inspect baggage, and manage all user accounts</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'manager_boarding' %}" class="btn btn-outline-primary fw-bold rounded-pill px-3 shadow-xs">
+            <i class="bi bi-person-walking me-1"></i> Boarding Monitor
+          </a>
+          <a href="{% url 'manager_counter_booking' %}" class="btn btn-primary fw-bold shadow-sm rounded-pill px-4">
+            <i class="bi bi-plus-circle me-1"></i> Issue Counter Ticket
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Overview Strip -->
+  <div class="col-12">
+    <div class="row g-3">
+      <div class="col-6 col-md-3 col-xl">
+        <div class="card card-ops p-3 shadow-xs border-0 bg-white h-100">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-secondary small fw-bold">TOTAL BOOKINGS</span>
+            <i class="bi bi-ticket-perforated text-primary fs-5"></i>
+          </div>
+          <h3 class="fw-bold text-dark mt-2 mb-0">{{ total_passengers_count }}</h3>
+          <small class="text-muted" style="font-size: 0.72rem;">Across scheduled flights</small>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3 col-xl">
+        <div class="card card-ops p-3 shadow-xs border-0 bg-white h-100 border-start border-4 border-success">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-success small fw-bold">🟢 BOARDED</span>
+            <i class="bi bi-check2-circle text-success fs-5"></i>
+          </div>
+          <h3 class="fw-bold text-success mt-2 mb-0">{{ boarded_count }}</h3>
+          <small class="text-muted" style="font-size: 0.72rem;">On board aircraft</small>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3 col-xl">
+        <div class="card card-ops p-3 shadow-xs border-0 bg-white h-100 border-start border-4 border-warning">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-warning small fw-bold">🟡 WAITING / AT GATE</span>
+            <i class="bi bi-hourglass-split text-warning fs-5"></i>
+          </div>
+          <h3 class="fw-bold text-dark mt-2 mb-0">{{ waiting_count }}</h3>
+          <small class="text-muted" style="font-size: 0.72rem;">Pending at gate / lobby</small>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3 col-xl">
+        <div class="card card-ops p-3 shadow-xs border-0 bg-white h-100 border-start border-4 border-info">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-info small fw-bold">CHECKED IN</span>
+            <i class="bi bi-person-check text-info fs-5"></i>
+          </div>
+          <h3 class="fw-bold text-dark mt-2 mb-0">{{ checked_in_count }}</h3>
+          <small class="text-muted" style="font-size: 0.72rem;">Baggage dropped / Web check-in</small>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3 col-xl">
+        <div class="card card-ops p-3 shadow-xs border-0 bg-white h-100 border-start border-4 border-primary">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="text-primary small fw-bold">CHECKED BAGGAGE</span>
+            <i class="bi bi-luggage text-primary fs-5"></i>
+          </div>
+          <h3 class="fw-bold text-dark mt-2 mb-0">{{ total_baggage_count }} <span class="fs-6 text-muted fw-normal">({{ total_baggage_weight }} kg)</span></h3>
+          <small class="text-muted" style="font-size: 0.72rem;">Total baggage weight</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs (Manifest vs Users Directory) -->
+  <div class="col-12">
+    <ul class="nav nav-pills gap-2 bg-white p-2 rounded-4 shadow-xs border">
+      <li class="nav-item">
+        <a class="nav-link rounded-pill fw-bold {% if tab != 'users' %}active bg-primary{% else %}text-secondary{% endif %}" href="{% url 'manager_passengers' %}?tab=manifest{% if selected_flight_id %}&flight_id={{ selected_flight_id }}{% endif %}">
+          <i class="bi bi-airplane-fill me-1"></i> Flight Passenger Manifest & Boarding Telemetry
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link rounded-pill fw-bold {% if tab == 'users' %}active bg-primary{% else %}text-secondary{% endif %}" href="{% url 'manager_passengers' %}?tab=users">
+          <i class="bi bi-person-badge me-1"></i> All Users & Staff Directory ({{ total_users_count }})
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  {% if tab != 'users' %}
+  <!-- ========================================================================= -->
+  <!-- TAB 1: FLIGHT PASSENGER MANIFEST & LIVE BOARDING TELEMETRY -->
+  <!-- ========================================================================= -->
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm border-0 bg-white">
+      
+      <!-- Filter and Search Bar -->
+      <form method="GET" action="{% url 'manager_passengers' %}" class="row g-3 align-items-end">
+        <input type="hidden" name="tab" value="manifest">
+
+        <!-- Flight Selector -->
+        <div class="col-md-4">
+          <label class="form-label text-dark small fw-bold">Filter by Flight</label>
+          <select name="flight_id" class="form-select" onchange="this.form.submit()">
+            <option value="">All Flights Manifest (All Departing Flights)</option>
+            {% for fl in all_flights %}
+              <option value="{{ fl.id }}" {% if selected_flight_id == fl.id %}selected{% endif %}>
+                {{ fl.flight_number }} - {{ fl.airline.iata_code }} ({{ fl.source_airport.iata_code }} → {{ fl.destination_airport.iata_code }}) [Gate: {{ fl.gate.gate_number|default:"TBD" }}] - {{ fl.scheduled_departure|date:"d M, h:i A" }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Boarding Status Filter -->
+        <div class="col-md-3">
+          <label class="form-label text-dark small fw-bold">Boarding Status</label>
+          <select name="boarding_status" class="form-select" onchange="this.form.submit()">
+            <option value="">All Statuses (Boarded, Waiting, Checked In)</option>
+            <option value="BOARDED" {% if boarding_filter == 'BOARDED' %}selected{% endif %}>🟢 Boarded Only (On Aircraft)</option>
+            <option value="WAITING" {% if boarding_filter == 'WAITING' %}selected{% endif %}>🟡 Waiting / Not Boarded (At Gate)</option>
+            <option value="CHECKED_IN" {% if boarding_filter == 'CHECKED_IN' %}selected{% endif %}>🔵 Checked In Only</option>
+            <option value="CANCELLED" {% if boarding_filter == 'CANCELLED' %}selected{% endif %}>❌ Cancelled</option>
+          </select>
+        </div>
+
+        <!-- Search Input -->
+        <div class="col-md-3">
+          <label class="form-label text-dark small fw-bold">Search Passenger / Flight</label>
+          <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Name, Email, PNR, Seat, Flight...">
+        </div>
+
+        <!-- Buttons -->
+        <div class="col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-primary w-100 fw-bold">
+            <i class="bi bi-search"></i> Filter
+          </button>
+          <a href="{% url 'manager_passengers' %}?tab=manifest" class="btn btn-outline-secondary" title="Reset Filters">
+            <i class="bi bi-arrow-counterclockwise"></i>
+          </a>
+        </div>
+      </form>
+
+      <!-- Status Quick Filter Pills -->
+      <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
+        <span class="small text-muted align-self-center me-1">Quick Filters:</span>
+        <a href="{% url 'manager_passengers' %}?tab=manifest{% if selected_flight_id %}&flight_id={{ selected_flight_id }}{% endif %}" class="badge {% if not boarding_filter %}bg-primary{% else %}bg-light text-dark border{% endif %} text-decoration-none px-3 py-2 rounded-pill">
+          All Passengers ({{ total_passengers_count }})
+        </a>
+        <a href="{% url 'manager_passengers' %}?tab=manifest&boarding_status=BOARDED{% if selected_flight_id %}&flight_id={{ selected_flight_id }}{% endif %}" class="badge {% if boarding_filter == 'BOARDED' %}bg-success text-white{% else %}bg-light text-success border border-success{% endif %} text-decoration-none px-3 py-2 rounded-pill">
+          <i class="bi bi-check-circle-fill me-1"></i> Boarded ({{ boarded_count }})
+        </a>
+        <a href="{% url 'manager_passengers' %}?tab=manifest&boarding_status=WAITING{% if selected_flight_id %}&flight_id={{ selected_flight_id }}{% endif %}" class="badge {% if boarding_filter == 'WAITING' %}bg-warning text-dark{% else %}bg-light text-warning-emphasis border border-warning{% endif %} text-decoration-none px-3 py-2 rounded-pill">
+          <i class="bi bi-hourglass-split me-1"></i> Waiting / Pending ({{ waiting_count }})
+        </a>
+        <a href="{% url 'manager_passengers' %}?tab=manifest&boarding_status=CHECKED_IN{% if selected_flight_id %}&flight_id={{ selected_flight_id }}{% endif %}" class="badge {% if boarding_filter == 'CHECKED_IN' %}bg-info text-white{% else %}bg-light text-info border border-info{% endif %} text-decoration-none px-3 py-2 rounded-pill">
+          <i class="bi bi-person-check-fill me-1"></i> Checked In ({{ checked_in_count }})
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Manifest Data Table -->
+  <div class="col-12">
+    <div class="card card-ops shadow-sm border-0 bg-white">
+      <div class="card-ops-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="fw-bold text-dark mb-0">
+          <i class="bi bi-card-checklist text-primary me-2"></i> Live Passenger Flight Manifest
+        </h5>
+        <span class="badge bg-light border text-muted px-3 py-2 rounded-pill">{{ bookings|length }} Bookings Shown</span>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-ops mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>Passenger & Contact</th>
+                <th>Flight & Route</th>
+                <th>Gate & Dep. Time</th>
+                <th>Seat & PNR</th>
+                <th>Boarding Status</th>
+                <th>Baggage Telemetry</th>
+                <th class="text-end pe-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in bookings %}
+                <tr class="{% if b.boarding_record and b.boarding_record.boarding_status == 'BOARDED' or b.status == 'BOARDED' %}table-success bg-opacity-10{% elif b.status == 'CANCELLED' %}table-danger bg-opacity-10{% endif %}">
+                  
+                  <!-- Passenger Info -->
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white shadow-xs" style="background-color: {{ b.flight.airline.color_hex|default:'#1e3a8a' }}; width: 36px; height: 36px; font-size: 0.85rem;">
+                        {{ b.passenger_name|slice:":1"|upper }}
+                      </div>
+                      <div>
+                        <strong class="text-dark d-block">{{ b.passenger_name }}</strong>
+                        <div class="text-muted small"><i class="bi bi-envelope me-1"></i>{{ b.passenger_email }}</div>
+                        {% if b.passenger_phone %}
+                          <div class="text-muted small"><i class="bi bi-telephone me-1"></i>{{ b.passenger_phone }}</div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Flight & Route -->
+                  <td>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <strong class="text-primary font-monospace fs-6">{{ b.flight.flight_number }}</strong>
+                      <span class="badge bg-light border text-dark">{{ b.flight.airline.name }}</span>
+                    </div>
+                    <div class="text-secondary small fw-semibold">
+                      {{ b.flight.source_airport.iata_code }} → {{ b.flight.destination_airport.iata_code }} ({{ b.flight.destination_airport.city }})
+                    </div>
+                    <div>
+                      <span class="badge badge-status {{ b.flight.status_css_class }}" style="font-size: 0.68rem; padding: 0.25em 0.6em;">
+                        {{ b.flight.get_status_display }}
+                      </span>
+                    </div>
+                  </td>
+
+                  <!-- Gate & Departure Time -->
+                  <td>
+                    <div class="mb-1">
+                      {% if b.flight.gate %}
+                        <span class="badge bg-warning bg-opacity-25 text-dark border border-warning px-2 py-1 font-monospace fw-bold fs-6">
+                          Gate {{ b.flight.gate.gate_number }}
+                        </span>
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">{{ b.flight.gate.terminal }}</small>
+                      {% else %}
+                        <span class="badge bg-secondary text-white font-monospace">Gate TBD</span>
+                      {% endif %}
+                    </div>
+                    <div class="text-dark small fw-bold">{{ b.flight.scheduled_departure|date:"h:i A" }}</div>
+                    <small class="text-muted" style="font-size: 0.72rem;">{{ b.flight.scheduled_departure|date:"d M Y" }}</small>
+                  </td>
+
+                  <!-- Seat & PNR -->
+                  <td>
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                      <span class="badge bg-primary fs-6 px-2 py-1 font-monospace">{{ b.seat_number }}</span>
+                      {% if b.seat and b.seat.seat_class %}
+                        <span class="badge bg-light border text-muted" style="font-size: 0.68rem;">{{ b.seat.get_seat_class_display }}</span>
+                      {% endif %}
+                    </div>
+                    <div class="font-monospace text-dark fw-bold small">PNR: {{ b.booking_reference }}</div>
+                    <span class="badge bg-light border text-secondary" style="font-size: 0.65rem;">
+                      {{ b.get_booking_channel_display }}
+                    </span>
+                  </td>
+
+                  <!-- Boarding Status Telemetry -->
+                  <td>
+                    {% with br=b.boarding_record %}
+                      {% if br and br.boarding_status == 'BOARDED' or b.status == 'BOARDED' %}
+                        <span class="badge bg-success text-white px-3 py-1 rounded-pill fw-bold">
+                          <i class="bi bi-check2-circle me-1"></i> BOARDED
+                        </span>
+                        {% if br and br.boarding_time %}
+                          <div class="text-success small fw-semibold mt-1" style="font-size: 0.72rem;">
+                            Boarded at {{ br.boarding_time|date:"h:i A" }}
+                          </div>
+                        {% endif %}
+                        {% if br and br.scanned_by_staff %}
+                          <div class="text-muted small" style="font-size: 0.68rem;">
+                            Gate: {{ br.scanned_by_staff.get_full_name|default:br.scanned_by_staff.username }}
+                          </div>
+                        {% endif %}
+                      {% elif b.status == 'CANCELLED' %}
+                        <span class="badge bg-danger text-white px-3 py-1 rounded-pill">
+                          <i class="bi bi-x-circle me-1"></i> CANCELLED
+                        </span>
+                      {% elif b.status == 'CHECKED_IN' %}
+                        <span class="badge bg-info text-white px-3 py-1 rounded-pill fw-bold">
+                          <i class="bi bi-person-check me-1"></i> CHECKED IN
+                        </span>
+                        <div class="text-muted small mt-1" style="font-size: 0.72rem;">Waiting at Gate</div>
+                      {% else %}
+                        <span class="badge bg-warning bg-opacity-25 text-dark border border-warning px-3 py-1 rounded-pill fw-bold">
+                          <i class="bi bi-hourglass-split me-1 text-warning"></i> WAITING / AT GATE
+                        </span>
+                        <div class="text-muted small mt-1" style="font-size: 0.72rem;">Not yet scanned</div>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+
+                  <!-- Baggage Telemetry -->
+                  <td>
+                    {% with bag=b.baggage_items.first %}
+                      {% if bag %}
+                        <div class="d-flex align-items-center gap-1 mb-1">
+                          <span class="badge {% if bag.status == 'LOADED' or bag.status == 'DELIVERED' %}bg-success{% elif bag.status == 'DELAYED' or bag.status == 'MISSING' %}bg-danger{% else %}bg-primary{% endif %} text-white font-monospace" style="font-size: 0.7rem;">
+                            {{ bag.tag_number }}
+                          </span>
+                        </div>
+                        <div class="text-dark small fw-bold"><i class="bi bi-scale me-1"></i>{{ bag.weight_kg }} kg</div>
+                        <span class="badge bg-light border text-dark" style="font-size: 0.65rem;">
+                          {{ bag.get_status_display }}
+                        </span>
+                      {% else %}
+                        <span class="text-muted small"><i class="bi bi-bag me-1"></i>No Checked Bag</span>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+
+                  <!-- Actions -->
+                  <td class="text-end pe-4">
+                    <div class="d-flex justify-content-end gap-1">
+                      <a href="{% url 'booking_ticket' b.id %}" class="btn btn-sm btn-outline-primary" title="View Digital Ticket">
+                        <i class="bi bi-ticket-perforated"></i> Ticket
+                      </a>
+                      <a href="{% url 'public_flight_details' b.flight.id %}" class="btn btn-sm btn-outline-secondary" title="View Flight Details">
+                        <i class="bi bi-airplane"></i>
+                      </a>
+                    </div>
+                  </td>
+
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center py-5 text-muted">
+                    <i class="bi bi-person-x display-4 d-block mb-2 text-secondary opacity-50"></i>
+                    No passenger manifest records found matching the specified filters.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- ========================================================================= -->
+  <!-- TAB 2: ALL REGISTERED USERS DIRECTORY (PASSENGERS, STAFF, MANAGERS) -->
+  <!-- ========================================================================= -->
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm border-0 bg-white">
+      
+      <!-- Role Filter & Search -->
+      <form method="GET" action="{% url 'manager_passengers' %}" class="row g-3 align-items-end">
+        <input type="hidden" name="tab" value="users">
+
+        <div class="col-md-4">
+          <label class="form-label text-dark small fw-bold">Filter by Role</label>
+          <select name="role" class="form-select" onchange="this.form.submit()">
+            <option value="">All Airport User Roles ({{ total_users_count }})</option>
+            <option value="PASSENGER" {% if role_filter == 'PASSENGER' %}selected{% endif %}>Passengers ({{ total_passenger_users_count }})</option>
+            <option value="GROUND_STAFF" {% if role_filter == 'GROUND_STAFF' %}selected{% endif %}>Ground Staff ({{ total_staff_users_count }})</option>
+            <option value="OPERATIONS_MANAGER" {% if role_filter == 'OPERATIONS_MANAGER' %}selected{% endif %}>Operations Managers ({{ total_manager_users_count }})</option>
+          </select>
+        </div>
+
+        <div class="col-md-5">
+          <label class="form-label text-dark small fw-bold">Search Users</label>
+          <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Search by Username, Full Name, Email, Phone...">
+        </div>
+
+        <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary w-100 fw-bold">
+            <i class="bi bi-search"></i> Search Users
+          </button>
+          <a href="{% url 'manager_passengers' %}?tab=users" class="btn btn-outline-secondary" title="Reset Filters">
+            <i class="bi bi-arrow-counterclockwise"></i>
+          </a>
+        </div>
+      </form>
+
+      <!-- Quick Role Pills -->
+      <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
+        <span class="small text-muted align-self-center me-1">Role Filter:</span>
+        <a href="{% url 'manager_passengers' %}?tab=users" class="badge {% if not role_filter %}bg-primary{% else %}bg-light text-dark border{% endif %} text-decoration-none px-3 py-2 rounded-pill">
+          All Users ({{ total_users_count }})
+        </a>
+        <a href="{% url 'manager_passengers' %}?tab=users&role=PASSENGER" class="badge {% if role_filter == 'PASSENGER' %}bg-info text-white{% else %}bg-light text-info border border-info{% endif %} text-decoration-none px-3 py-2 rounded-pill">
+          <i class="bi bi-person me-1"></i> Passengers ({{ total_passenger_users_count }})
+        </a>
+        <a href="{% url 'manager_passengers' %}?tab=users&role=GROUND_STAFF" class="badge {% if role_filter == 'GROUND_STAFF' %}bg-success text-white{% else %}bg-light text-success border border-success{% endif %} text-decoration-none px-3 py-2 rounded-pill">
+          <i class="bi bi-shield-shaded me-1"></i> Ground Staff ({{ total_staff_users_count }})
+        </a>
+        <a href="{% url 'manager_passengers' %}?tab=users&role=OPERATIONS_MANAGER" class="badge {% if role_filter == 'OPERATIONS_MANAGER' %}bg-primary text-white{% else %}bg-light text-primary border border-primary{% endif %} text-decoration-none px-3 py-2 rounded-pill">
+          <i class="bi bi-display me-1"></i> Operations Managers ({{ total_manager_users_count }})
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="col-12">
+    <div class="card card-ops shadow-sm border-0 bg-white">
+      <div class="card-ops-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="fw-bold text-dark mb-0">
+          <i class="bi bi-person-lines-fill text-primary me-2"></i> Airport Users Master Directory
+        </h5>
+        <span class="badge bg-light border text-muted px-3 py-2 rounded-pill">{{ users|length }} User Accounts</span>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-ops mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>User Account</th>
+                <th>Contact Info</th>
+                <th>Role & System Access</th>
+                <th>Operational Status & Assignment</th>
+                <th>Activity / Bookings Count</th>
+                <th>Date Joined</th>
+                <th class="text-end pe-4">Quick Links</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in users %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white shadow-xs" style="background-color: {% if u.is_operations_manager %}#4f46e5{% elif u.is_ground_staff %}#15803d{% else %}#0284c7{% endif %}; width: 36px; height: 36px; font-size: 0.85rem;">
+                        {{ u.username|slice:":1"|upper }}
+                      </div>
+                      <div>
+                        <strong class="text-dark d-block">{{ u.get_full_name|default:u.username }}</strong>
+                        <div class="text-muted small">@{{ u.username }}</div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td>
+                    <div class="text-dark small">{{ u.email }}</div>
+                    {% if u.phone %}
+                      <div class="text-muted small"><i class="bi bi-telephone me-1"></i>{{ u.phone }}</div>
+                    {% else %}
+                      <span class="text-muted small">--</span>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    <span class="badge {% if u.is_operations_manager %}bg-primary{% elif u.is_ground_staff %}bg-success{% else %}bg-info text-white{% endif %} px-2 py-1 rounded-pill">
+                      {{ u.get_role_display }}
+                    </span>
+                    {% if u.is_superuser %}
+                      <span class="badge bg-dark text-white ms-1" style="font-size: 0.65rem;">Superuser</span>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    {% if u.is_ground_staff and u.staff_profile %}
+                      <div>
+                        <span class="badge bg-light border text-primary font-monospace">{{ u.staff_profile.employee_id }}</span>
+                        <span class="badge {% if u.staff_profile.availability_status == 'AVAILABLE' %}bg-success{% elif u.staff_profile.availability_status == 'ASSIGNED' %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">
+                          {{ u.staff_profile.get_availability_status_display }}
+                        </span>
+                      </div>
+                      <small class="text-muted d-block mt-1">{{ u.staff_profile.get_department_display }} &bull; {{ u.staff_profile.station }}</small>
+                      {% if not u.staff_profile.is_approved %}
+                        <span class="badge bg-warning text-dark mt-1" style="font-size: 0.65rem;">Pending Approval</span>
+                      {% endif %}
+                    {% elif u.is_operations_manager and u.manager_profile %}
+                      <div>
+                        <span class="badge bg-light border text-primary font-monospace">{{ u.manager_profile.employee_id }}</span>
+                        <small class="text-dark fw-bold">{{ u.manager_profile.desk_location }}</small>
+                      </div>
+                    {% elif u.is_passenger and u.passenger_profile %}
+                      <span class="font-monospace text-secondary small">Passport: {{ u.passenger_profile.passport_number|default:"Verified" }}</span>
+                    {% else %}
+                      <span class="text-muted small">Standard Account</span>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    {% if u.is_passenger %}
+                      <span class="badge bg-light border text-dark font-monospace">{{ u.bookings.count }} Bookings</span>
+                    {% elif u.is_ground_staff %}
+                      <span class="badge bg-light border text-dark font-monospace">{{ u.flight_assignments.count }} Flight Assignments</span>
+                    {% else %}
+                      <span class="text-muted small">Full Operations Access</span>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    <span class="text-secondary small">{{ u.date_joined|date:"d M Y" }}</span>
+                  </td>
+
+                  <td class="text-end pe-4">
+                    {% if u.is_ground_staff and u.staff_profile %}
+                      <a href="{% url 'manager_staff' %}?q={{ u.username }}" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-person-badge"></i> Staff Roster
+                      </a>
+                    {% elif u.is_passenger and u.bookings.exists %}
+                      <a href="{% url 'manager_passengers' %}?tab=manifest&q={{ u.username }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-airplane"></i> Manifest
+                      </a>
+                    {% else %}
+                      <span class="text-muted small">--</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center py-5 text-muted">
+                    <i class="bi bi-people display-4 d-block mb-2 text-secondary opacity-50"></i>
+                    No users found matching query.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

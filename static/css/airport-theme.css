@@ -1,0 +1,503 @@
+/* ==========================================================
+   AERO-GROUND AIRPORT OPERATIONS - PASTEL DESIGN SYSTEM
+   Modern, elegant, airy pastel aesthetic for Aviation Ops
+   ========================================================== */
+
+:root {
+  /* Pastel Palette Core */
+  --pastel-bg-main: #f8fafc;
+  --pastel-bg-soft: #f1f5f9;
+  
+  /* Pastel Accent Tones */
+  --pastel-blue-bg: #e0f2fe;
+  --pastel-blue-border: #bae6fd;
+  --pastel-blue-text: #0369a1;
+
+  --pastel-indigo-bg: #ede9fe;
+  --pastel-indigo-border: #ddd6fe;
+  --pastel-indigo-text: #5b21b6;
+
+  --pastel-mint-bg: #dcfce7;
+  --pastel-mint-border: #bbf7d0;
+  --pastel-mint-text: #15803d;
+
+  --pastel-amber-bg: #fef3c7;
+  --pastel-amber-border: #fde68a;
+  --pastel-amber-text: #b45309;
+
+  --pastel-rose-bg: #ffe4e6;
+  --pastel-rose-border: #fecdd3;
+  --pastel-rose-text: #be123c;
+
+  --pastel-purple-bg: #f3e8ff;
+  --pastel-purple-border: #e9d5ff;
+  --pastel-purple-text: #7e22ce;
+
+  /* Typography & Structure */
+  --text-main: #0f172a;
+  --text-body: #334155;
+  --text-muted: #64748b;
+  --text-light: #94a3b8;
+  
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --card-border: #e2e8f0;
+  --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+  --card-shadow-hover: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+}
+
+body {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 40%, #eef2ff 100%);
+  background-attachment: fixed;
+  color: var(--text-body);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+/* ==========================================================
+   PORTAL-SPECIFIC PASTEL PALETTES
+   ========================================================== */
+
+/* 1. Passenger Portal (Sky Blue & Peach Pastels) */
+body.portal-passenger {
+  background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 50%, #faf5ff 100%);
+}
+
+/* 2. Ground Staff Portal (Mint & Sage Pastels) */
+body.portal-staff {
+  background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 50%, #ecfeff 100%);
+}
+
+/* 3. Operations Manager Portal (Lavender & Ice Blue Pastels) */
+body.portal-manager {
+  background: linear-gradient(135deg, #f5f3ff 0%, #f8fafc 50%, #eff6ff 100%);
+}
+
+/* ==========================================================
+   SIDEBAR NAVIGATION (PASTEL LIGHT THEME)
+   ========================================================== */
+.sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  min-height: 100vh;
+  box-shadow: 2px 0 16px rgba(15, 23, 42, 0.03);
+}
+
+.sidebar .nav-link,
+.sidebar .sidebar-link {
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  margin-bottom: 0.25rem;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .sidebar-link:hover {
+  color: #1d4ed8;
+  background-color: #f8fafc;
+  transform: translateX(3px);
+}
+
+.sidebar .nav-link.active,
+.sidebar .sidebar-link.active {
+  color: #1d4ed8 !important;
+  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+  font-weight: 700;
+  border: 1px solid #bfdbfe;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.10);
+}
+
+/* Top Navbar */
+.top-navbar {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+/* ==========================================================
+   PASTEL CARDS & CONTAINERS
+   ========================================================== */
+.card-ops {
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--card-border);
+  border-radius: 1rem;
+  box-shadow: var(--card-shadow);
+  color: var(--text-body);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-ops:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.card-ops-header {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: rgba(248, 250, 252, 0.7);
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+/* Hero Pastel Gradient Card */
+.card-hero-pastel {
+  background: linear-gradient(135deg, #e0f2fe 0%, #ede9fe 50%, #fef3c7 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 30px -5px rgba(186, 230, 253, 0.4);
+}
+
+/* ==========================================================
+   PASTEL STAT CARDS
+   ========================================================== */
+.stat-card {
+  border-radius: 0.85rem;
+  padding: 1.25rem;
+  border: 1px solid transparent;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.stat-card.blue {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  color: #0369a1;
+  border-color: #7dd3fc;
+}
+
+.stat-card.emerald {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #15803d;
+  border-color: #86efac;
+}
+
+.stat-card.amber {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+.stat-card.purple {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+  color: #6b21a8;
+  border-color: #d8b4fe;
+}
+
+.stat-card.rose {
+  background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%);
+  color: #9f1239;
+  border-color: #fda4af;
+}
+
+.stat-card.indigo {
+  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+
+.stat-card.dark {
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #e2e8f0;
+}
+
+/* ==========================================================
+   PASTEL STATUS BADGES
+   ========================================================== */
+.badge-status {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 0.45em 0.85em;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.badge-status.scheduled {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.badge-status.confirmed {
+  background-color: #ccfbf1;
+  color: #0f766e;
+  border-color: #99f6e4;
+}
+
+.badge-status.arrived {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.badge-status.boarding {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+  border-color: #d8b4fe;
+  animation: pastel-pulse 2s infinite;
+}
+
+.badge-status.boarding-completed {
+  background-color: #e0e7ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+
+.badge-status.ready {
+  background-color: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+.badge-status.departed {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.badge-status.delayed {
+  background-color: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+  font-weight: 700;
+}
+
+.badge-status.cancelled {
+  background-color: #ffe4e6;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+@keyframes pastel-pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ==========================================================
+   FLIGHT TICKETS & PUBLIC FIDS CARDS
+   ========================================================== */
+.flight-ticket-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.flight-ticket-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.08);
+  border-color: #cbd5e1;
+}
+
+.flight-ticket-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #f472b6);
+}
+
+/* ==========================================================
+   AIRCRAFT SEAT MAP (PASTEL LIGHT THEME)
+   ========================================================== */
+.cabin-map {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.seat-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.seat-item {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.seat-item:hover:not(.booked) {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  transform: scale(1.08);
+}
+
+.seat-item.booked {
+  background: #e2e8f0;
+  color: #94a3b8;
+  border-color: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.seat-item.selected {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border-color: #059669 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  transform: scale(1.1);
+}
+
+.seat-item.business {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #b45309;
+}
+
+/* ==========================================================
+   BOARDING PASS
+   ========================================================== */
+.boarding-pass-card {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+}
+
+.boarding-pass-header {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  padding: 18px 24px;
+}
+
+.boarding-pass-body {
+  padding: 24px;
+}
+
+/* ==========================================================
+   TABLES & LISTS IN LIGHT PASTEL
+   ========================================================== */
+.table-ops {
+  color: var(--text-body);
+  border-color: #e2e8f0;
+}
+
+.table-ops th {
+  background-color: #f8fafc;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-color: #e2e8f0;
+  padding: 12px 14px;
+}
+
+.table-ops td {
+  border-color: #f1f5f9;
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+
+.table-ops tbody tr:hover {
+  background-color: rgba(241, 245, 249, 0.6);
+}
+
+/* Form Controls in Light Pastel */
+.form-control, .form-select {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border-radius: 0.5rem;
+}
+
+.form-control:focus, .form-select:focus {
+  background-color: #ffffff;
+  border-color: #38bdf8;
+  color: #0f172a;
+  box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.15);
+}
+
+/* AI Score Meter */
+.ai-score-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.ai-score-high { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.ai-score-med { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.ai-score-low { background-color: #ffe4e6; color: #be123c; border: 1px solid #fecdd3; }
+
+/* Timeline Step Tracker */
+.timeline-step {
+  position: relative;
+  padding-left: 28px;
+  margin-bottom: 20px;
+}
+
+.timeline-step::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  bottom: -20px;
+  width: 2px;
+  background-color: #cbd5e1;
+}
+
+.timeline-step:last-child::before {
+  display: none;
+}
+
+.timeline-step-dot {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #0284c7;
+}
+
+.timeline-step-dot.active {
+  background-color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.timeline-step-dot.completed {
+  background-color: #38bdf8;
+}

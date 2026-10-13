@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}Flight Operations & Seat Allocation Board - Ground Staff{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-airplane-engines-fill text-success me-2"></i> All Flight Operations &amp; Seat Allocation Board
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+
+  <!-- Header Banner -->
+  <div class="col-12">
+    <div class="card card-ops p-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #dcfce7 0%, #ecfeff 50%, #eff6ff 100%);">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white shadow-xs mb-2">
+            <span class="status-indicator-live"></span>
+            <span class="text-success fw-bold small">Ramp &amp; Gate Telemetry</span>
+          </div>
+          <h4 class="fw-bold text-dark mb-1">Flight Operations &amp; Passenger Manifests</h4>
+          <p class="text-secondary small mb-0">Monitor gate allocations, delay telemetry, live 2D seat maps, baggage weights, and counter booking desks</p>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'staff_counter_booking' %}" class="btn btn-primary fw-bold shadow-sm rounded-pill px-3">
+            <i class="bi bi-person-plus-fill me-1"></i> Book Passenger Seat
+          </a>
+          <a href="{% url 'staff_ticket_verification' %}" class="btn btn-success fw-bold shadow-sm rounded-pill px-3">
+            <i class="bi bi-qr-code-scan me-1"></i> Verify Passenger Ticket
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Strip -->
+  <div class="col-sm-6 col-md-3">
+    <div class="card card-ops p-3 border-0 shadow-sm text-center" style="background: #f0fdf4;">
+      <small class="text-secondary fw-bold text-uppercase" style="font-size: 0.72rem;">TOTAL FLIGHTS</small>
+      <div class="fs-2 fw-bold text-success mt-1">{{ total_flights_count }}</div>
+      <small class="text-muted">Today's Schedule</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-3">
+    <div class="card card-ops p-3 border-0 shadow-sm text-center" style="background: #fefce8;">
+      <small class="text-secondary fw-bold text-uppercase" style="font-size: 0.72rem;">DELAYED FLIGHTS</small>
+      <div class="fs-2 fw-bold text-warning mt-1">{{ delayed_flights_count }}</div>
+      <small class="text-warning fw-semibold">Ramp alerts logged</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-3">
+    <div class="card card-ops p-3 border-0 shadow-sm text-center" style="background: #eff6ff;">
+      <small class="text-secondary fw-bold text-uppercase" style="font-size: 0.72rem;">BOARDING STAGE</small>
+      <div class="fs-2 fw-bold text-primary mt-1">{{ boarding_flights_count }}</div>
+      <small class="text-primary fw-semibold">Active gate boarding</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-3">
+    <div class="card card-ops p-3 border-0 shadow-sm text-center" style="background: #f5f3ff;">
+      <small class="text-secondary fw-bold text-uppercase" style="font-size: 0.72rem;">ON-TIME SCHEDULE</small>
+      <div class="fs-2 fw-bold text-indigo mt-1" style="color: #6366f1;">{{ on_time_flights_count }}</div>
+      <small class="text-muted">On schedule</small>
+    </div>
+  </div>
+
+</div>
+
+<!-- Filter and Search Bar -->
+<div class="card card-ops p-3 mb-4 shadow-sm border-0 bg-white">
+  <form method="GET" class="row g-2 align-items-center">
+    <div class="col-md-5">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+        <input type="text" name="q" value="{{ search_query }}" class="form-control border-start-0 shadow-none" placeholder="Search Flight No, Airline, City, Gate...">
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <select name="status" class="form-select form-select-sm shadow-none" onchange="this.form.submit()">
+        <option value="">All Flight Statuses</option>
+        <option value="SCHEDULED" {% if status_filter == 'SCHEDULED' %}selected{% endif %}>Scheduled / On Time</option>
+        <option value="BOARDING" {% if status_filter == 'BOARDING' %}selected{% endif %}>Boarding in Progress</option>
+        <option value="DELAYED" {% if status_filter == 'DELAYED' %}selected{% endif %}>Delayed</option>
+        <option value="DEPARTED" {% if status_filter == 'DEPARTED' %}selected{% endif %}>Departed</option>
+        <option value="CANCELLED" {% if status_filter == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+      </select>
+    </div>
+
+    <div class="col-md-3 d-flex gap-2">
+      <button type="submit" class="btn btn-sm btn-primary w-100 fw-semibold">Filter</button>
+      <a href="{% url 'staff_flights' %}" class="btn btn-sm btn-outline-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Flight Operations Table -->
+<div class="card card-ops shadow-sm border-0 bg-white">
+  <div class="card-ops-header d-flex justify-content-between align-items-center">
+    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-table text-success me-2"></i> Flight Schedules, Gate Status &amp; Seat Allocation</h5>
+    <span class="badge bg-light border text-muted px-3 py-2 rounded-pill">{{ flights_data|length }} Flights Active</span>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-ops mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Flight &amp; Airline</th>
+            <th>Route (From → To)</th>
+            <th>Gate Allocation</th>
+            <th>Departure Time</th>
+            <th>Operational Status</th>
+            <th>Seats / Occupancy</th>
+            <th>Baggage Weight</th>
+            <th class="text-end pe-4">Staff Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in flights_data %}
+            {% with fl=item.flight %}
+            <tr class="{% if fl.status == 'DELAYED' or fl.delay_minutes > 0 %}table-warning bg-opacity-10{% elif fl.status == 'CANCELLED' %}table-danger bg-opacity-10{% elif item.is_my_assignment %}table-success bg-opacity-10{% endif %}">
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-primary font-monospace fs-6 px-2 py-1">{{ fl.flight_number }}</span>
+                  {% if item.is_my_assignment %}
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size: 0.68rem;">My Assigned Flight</span>
+                  {% endif %}
+                </div>
+                <strong class="text-dark d-block mt-1">{{ fl.airline.name }}</strong>
+                <small class="text-muted">{{ fl.aircraft.model|default:"A320" }} ({{ fl.aircraft.registration_number|default:"VT-REG" }})</small>
+              </td>
+
+              <td>
+                <div class="fw-bold text-dark">{{ fl.source_airport.iata_code }} → {{ fl.destination_airport.iata_code }}</div>
+                <small class="text-secondary">{{ fl.source_airport.city }} to {{ fl.destination_airport.city }}</small>
+              </td>
+
+              <td>
+                {% if fl.gate %}
+                  <div class="d-inline-flex align-items-center gap-1 px-2 py-1 rounded bg-light border">
+                    <i class="bi bi-door-open-fill text-warning"></i>
+                    <strong class="text-dark font-monospace">{{ fl.gate.gate_number }}</strong>
+                    <span class="text-muted small">({{ fl.gate.terminal }})</span>
+                  </div>
+                {% else %}
+                  <span class="badge bg-secondary bg-opacity-10 text-secondary border">TBD / Unassigned</span>
+                {% endif %}
+              </td>
+
+              <td>
+                <strong class="text-dark">{{ fl.scheduled_departure|date:"h:i A" }}</strong>
+                <div class="text-muted small">{{ fl.scheduled_departure|date:"d M Y" }}</div>
+                {% if fl.delay_minutes > 0 %}
+                  <div class="text-warning small fw-bold"><i class="bi bi-clock-history me-1"></i>Exp: {{ fl.effective_departure|date:"h:i A" }}</div>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if fl.status == 'DELAYED' or fl.delay_minutes > 0 %}
+                  <span class="badge badge-status delayed">DELAYED (+{{ fl.delay_minutes }}m)</span>
+                  {% if fl.delay_reason %}
+                    <div class="text-secondary small mt-1" style="font-size: 0.72rem;">{{ fl.get_delay_reason_display }}</div>
+                  {% endif %}
+                {% elif fl.status == 'CANCELLED' %}
+                  <span class="badge badge-status cancelled">CANCELLED</span>
+                {% elif fl.status == 'BOARDING' %}
+                  <span class="badge badge-status boarding">BOARDING</span>
+                {% elif fl.status == 'BOARDING_COMPLETED' %}
+                  <span class="badge badge-status boarding-completed">BOARDING DONE</span>
+                {% elif fl.status == 'READY_FOR_DEPARTURE' %}
+                  <span class="badge badge-status ready"><i class="bi bi-airplane-engines me-1"></i> READY TO DEPART</span>
+                {% elif fl.status == 'DEPARTED' %}
+                  <span class="badge badge-status departed">DEPARTED</span>
+                {% else %}
+                  <span class="badge badge-status scheduled">ON TIME</span>
+                {% endif %}
+              </td>
+
+              <td>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <strong class="text-dark small">{{ item.total_passengers }} / {{ item.capacity }}</strong>
+                  <span class="badge bg-light border text-muted" style="font-size: 0.68rem;">{{ item.available_seats }} free</span>
+                </div>
+                <div class="progress" style="height: 6px; width: 100px;">
+                  <div class="progress-bar bg-primary" style="width: {{ item.boarding_pct }}%;"></div>
+                </div>
+              </td>
+
+              <td>
+                <div class="d-flex align-items-center gap-1">
+                  <i class="bi bi-luggage text-primary"></i>
+                  <strong class="text-dark">{{ item.total_baggage_weight }} kg</strong>
+                </div>
+                <small class="text-muted">{{ item.baggage_count }} bags logged</small>
+              </td>
+
+              <td class="text-end pe-4">
+                <div class="btn-group btn-group-sm">
+                  <a href="{% url 'staff_flight_seats' fl.id %}" class="btn btn-outline-primary" title="View 2D Seat Allocation Map">
+                    <i class="bi bi-grid-3x3-gap-fill me-1"></i> Seat Map
+                  </a>
+                  <a href="{% url 'staff_counter_booking' %}?flight_id={{ fl.id }}" class="btn btn-outline-success" title="Book Passenger Seat">
+                    <i class="bi bi-person-plus me-1"></i> Book
+                  </a>
+                  <a href="{% url 'staff_boarding_manager' fl.id %}" class="btn btn-outline-info" title="Boarding Console">
+                    <i class="bi bi-people"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr>
+              <td colspan="8" class="text-center py-5 text-muted">
+                <i class="bi bi-airplane display-4 d-block mb-2 text-secondary opacity-50"></i>
+                No flights found matching the selected criteria.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

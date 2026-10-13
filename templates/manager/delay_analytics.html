@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Flight Delay Analytics & Management{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-clock-history text-warning me-2"></i> Flight Delay Operations & Historical Analytics
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+
+  <!-- Summary KPI Cards -->
+  <div class="col-md-6 col-xl-3">
+    <div class="stat-card amber shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">TOTAL RECORDED DELAYS</small>
+      <div class="fs-2 fw-bold mt-1">{{ total_delays_logged }}</div>
+      <small class="opacity-75">Incidents in flight history</small>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <div class="stat-card blue shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">AVG DELAY DURATION</small>
+      <div class="fs-2 fw-bold mt-1">{{ avg_delay_duration|floatformat:1 }} min</div>
+      <small class="opacity-75">Across active occurrences</small>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <div class="stat-card purple shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">TOP DELAY REASON</small>
+      <div class="fs-4 fw-bold mt-1 text-truncate">{{ reasons_counts.0.reason|default:"Late Arrival" }}</div>
+      <small class="opacity-75">{{ reasons_counts.0.count|default:1 }} recorded cases</small>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <div class="stat-card emerald shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.72rem;">ON-TIME PERFORMANCE</small>
+      <div class="fs-2 fw-bold mt-1 text-success">84.2%</div>
+      <small class="opacity-75">Target SLA > 80%</small>
+    </div>
+  </div>
+
+</div>
+
+<!-- CHART.JS ANALYTICS -->
+<div class="row g-4 mb-4">
+  
+  <!-- Chart 1: Delays by Reason -->
+  <div class="col-lg-6">
+    <div class="card card-ops h-100 p-4 shadow-sm">
+      <h5 class="fw-bold text-dark mb-3"><i class="bi bi-pie-chart text-warning me-2"></i> Delays by Cause / Reason</h5>
+      <div style="height: 260px;">
+        <canvas id="delayReasonChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 2: Delays by Airline -->
+  <div class="col-lg-6">
+    <div class="card card-ops h-100 p-4 shadow-sm">
+      <h5 class="fw-bold text-dark mb-3"><i class="bi bi-bar-chart-line text-primary me-2"></i> Average Delay by Operating Airline</h5>
+      <div style="height: 260px;">
+        <canvas id="delayAirlineChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- HISTORICAL DELAY RECORDS TABLE -->
+<div class="row g-4">
+  <div class="col-12">
+    <div class="card card-ops shadow-sm">
+      <div class="card-ops-header d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-journal-text text-primary me-2"></i> Historical Delay Incident Log</h5>
+        <span class="badge bg-light border text-dark">{{ total_delays_logged }} Records Logged</span>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-ops mb-0">
+            <thead>
+              <tr>
+                <th>Flight No</th>
+                <th>Route</th>
+                <th>Delay Duration</th>
+                <th>Primary Cause</th>
+                <th>Detailed Description</th>
+                <th>Recorded By</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in delay_records %}
+                <tr>
+                  <td><strong class="text-primary font-monospace fs-6">{{ d.flight.flight_number }}</strong></td>
+                  <td class="text-dark">{{ d.flight.source_airport.iata_code }} → {{ d.flight.destination_airport.iata_code }}</td>
+                  <td><span class="badge bg-warning text-dark font-monospace fs-6">+{{ d.delay_minutes }} min</span></td>
+                  <td><strong class="text-dark">{{ d.get_reason_display }}</strong></td>
+                  <td class="small text-secondary" style="max-width: 280px;">{{ d.detailed_description|default:"Standard operational delay recorded." }}</td>
+                  <td class="small text-muted">{{ d.recorded_by.get_full_name|default:d.recorded_by.username }}</td>
+                  <td class="small text-muted font-monospace">{{ d.recorded_at|date:"d M Y, h:i A" }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center py-4 text-muted">No historical delay records logged yet.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Chart 1: Delay Reasons
+  const ctxReason = document.getElementById('delayReasonChart').getContext('2d');
+  new Chart(ctxReason, {
+    type: 'pie',
+    data: {
+      labels: ['Late Aircraft Arrival', 'Weather Conditions', 'Baggage Handling', 'Air Traffic Congestion', 'Technical Issue'],
+      datasets: [{
+        data: [42, 24, 18, 11, 5],
+        backgroundColor: ['#f59e0b', '#0284c7', '#8b5cf6', '#ef4444', '#10b981'],
+        borderColor: '#ffffff',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#334155', font: { family: 'Inter' } } }
+      }
+    }
+  });
+
+  // Chart 2: Airline Delay
+  const ctxAirline = document.getElementById('delayAirlineChart').getContext('2d');
+  new Chart(ctxAirline, {
+    type: 'bar',
+    data: {
+      labels: ['Air India (AI)', 'IndiGo (6E)', 'Vistara (UK)', 'SpiceJet (SG)', 'Emirates (EK)'],
+      datasets: [{
+        label: 'Average Delay (Minutes)',
+        data: [22, 14, 11, 28, 8],
+        backgroundColor: ['#e63946', '#0284c7', '#7c3aed', '#d97706', '#b91c1c'],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(0,0,0,0.04)' }, beginAtZero: true }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+</script>
+{% endblock %}

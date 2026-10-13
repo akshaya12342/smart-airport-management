@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}Account Registration - Airport Operations System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center py-4" style="min-height: 85vh;">
+  <div class="col-md-9 col-lg-7">
+    <div class="card card-ops shadow-lg border-0 bg-white">
+      <!-- Header Banner with pastel gradient -->
+      <div class="card-ops-header text-center py-4 border-bottom" style="background: linear-gradient(135deg, #e0f2fe 0%, #ede9fe 100%);">
+        <div class="p-3 bg-white text-primary rounded-circle d-inline-flex mb-2 shadow-sm">
+          <i class="bi bi-person-plus-fill fs-2"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-1">Create Your Account</h4>
+        <p class="text-secondary small mb-0">Select your role to register for passenger flight bookings or airport ground operations</p>
+      </div>
+
+      <div class="card-body p-4 p-md-5">
+        <form method="POST" action="{% url 'register' %}" id="registrationForm">
+          {% csrf_token %}
+          
+          <!-- Role Selector -->
+          <div class="mb-4">
+            <label class="form-label text-dark small fw-bold mb-2">Register As:</label>
+            <div class="row g-3">
+              <div class="col-6">
+                <input type="radio" class="btn-check" name="role" id="rolePassenger" value="PASSENGER" checked autocomplete="off" onchange="toggleRoleFields()">
+                <label class="btn btn-outline-primary w-100 p-3 text-start rounded-3 h-100 d-flex flex-column justify-content-between" for="rolePassenger" style="border-width: 2px;">
+                  <div>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                      <strong class="fs-6"><i class="bi bi-person-fill me-1"></i> Passenger</strong>
+                      <i class="bi bi-check-circle-fill text-primary role-check-icon"></i>
+                    </div>
+                    <p class="text-muted small mb-0" style="font-size: 0.76rem;">Instant access for flight booking, seat selection & baggage tracking.</p>
+                  </div>
+                  <span class="badge bg-success bg-opacity-10 text-success mt-2 align-self-start">Instant Access</span>
+                </label>
+              </div>
+
+              <div class="col-6">
+                <input type="radio" class="btn-check" name="role" id="roleStaff" value="GROUND_STAFF" autocomplete="off" onchange="toggleRoleFields()">
+                <label class="btn btn-outline-primary w-100 p-3 text-start rounded-3 h-100 d-flex flex-column justify-content-between" for="roleStaff" style="border-width: 2px;">
+                  <div>
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                      <strong class="fs-6"><i class="bi bi-person-badge-fill me-1"></i> Ground Staff</strong>
+                      <i class="bi bi-check-circle-fill text-primary role-check-icon"></i>
+                    </div>
+                    <p class="text-muted small mb-0" style="font-size: 0.76rem;">Ramp, baggage, turnaround, boarding & operational flight dispatch.</p>
+                  </div>
+                  <span class="badge bg-warning bg-opacity-10 text-warning mt-2 align-self-start">Requires Approval</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Common Account Fields -->
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">First Name</label>
+              <input type="text" name="first_name" class="form-control bg-light" placeholder="e.g. Rahul" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Last Name</label>
+              <input type="text" name="last_name" class="form-control bg-light" placeholder="e.g. Sharma" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Username</label>
+              <input type="text" name="username" class="form-control bg-light" placeholder="e.g. rahulsharma" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Email Address</label>
+              <input type="email" name="email" class="form-control bg-light" placeholder="e.g. rahul@example.com" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Phone Number</label>
+              <input type="text" name="phone" class="form-control bg-light" placeholder="+91 98765 43210" required>
+            </div>
+
+            <!-- Passenger Specific Fields -->
+            <div class="col-md-6" id="passengerFields">
+              <label class="form-label text-dark small fw-bold">ID / Passport Number (Optional)</label>
+              <input type="text" name="passport" class="form-control bg-light" placeholder="e.g. Z9823412">
+            </div>
+
+            <!-- Ground Staff Specific Fields -->
+            <div class="col-md-6 d-none" id="staffDeptField">
+              <label class="form-label text-dark small fw-bold">Operational Department</label>
+              <select name="department" class="form-select bg-light">
+                {% for dept_code, dept_name in departments %}
+                  <option value="{{ dept_code }}">{{ dept_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6 d-none" id="staffShiftField">
+              <label class="form-label text-dark small fw-bold">Assigned Shift Schedule</label>
+              <select name="shift" class="form-select bg-light">
+                {% for shift_code, shift_name in shifts %}
+                  <option value="{{ shift_code }}">{{ shift_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6 d-none" id="staffStationField">
+              <label class="form-label text-dark small fw-bold">Station / Terminal Assignment</label>
+              <input type="text" name="station" class="form-control bg-light" value="COK Terminal 1" placeholder="e.g. COK Terminal 1 Ramp">
+            </div>
+
+            <!-- Passwords -->
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Password</label>
+              <input type="password" name="password" class="form-control bg-light" placeholder="Minimum 4 characters" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Confirm Password</label>
+              <input type="password" name="confirm_password" class="form-control bg-light" placeholder="Repeat password" required>
+            </div>
+          </div>
+
+          <!-- Approval Notice for Ground Staff -->
+          <div class="alert alert-warning border-0 rounded-3 mt-3 d-none" id="staffApprovalNotice" style="background-color: #fef3c7; color: #92400e; font-size: 0.82rem;">
+            <i class="bi bi-info-circle-fill me-1"></i>
+            <strong>Ground Staff Approval Policy:</strong> Newly registered Ground Staff accounts must be verified and approved by the <strong>Airport Operations Manager</strong> before you can log in.
+          </div>
+
+          <div class="mt-4">
+            <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm" id="submitBtn">
+              <i class="bi bi-check-circle-fill me-1"></i> Complete Registration
+            </button>
+          </div>
+        </form>
+
+        <div class="text-center mt-4 pt-3 border-top">
+          <span class="text-muted small">Already have an airport account?</span> 
+          <a href="{% url 'login' %}" class="small text-primary fw-semibold text-decoration-none ms-1">
+            <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleRoleFields() {
+  const isStaff = document.getElementById('roleStaff').checked;
+  const passengerFields = document.getElementById('passengerFields');
+  const staffDeptField = document.getElementById('staffDeptField');
+  const staffShiftField = document.getElementById('staffShiftField');
+  const staffStationField = document.getElementById('staffStationField');
+  const staffNotice = document.getElementById('staffApprovalNotice');
+  const submitBtn = document.getElementById('submitBtn');
+
+  if (isStaff) {
+    passengerFields.classList.add('d-none');
+    staffDeptField.classList.remove('d-none');
+    staffShiftField.classList.remove('d-none');
+    staffStationField.classList.remove('d-none');
+    staffNotice.classList.remove('d-none');
+    submitBtn.innerHTML = '<i class="bi bi-send-check-fill me-1"></i> Submit Staff Registration for Approval';
+  } else {
+    passengerFields.classList.remove('d-none');
+    staffDeptField.classList.add('d-none');
+    staffShiftField.classList.add('d-none');
+    staffStationField.classList.add('d-none');
+    staffNotice.classList.add('d-none');
+    submitBtn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Complete Registration';
+  }
+}
+</script>
+{% endblock %}

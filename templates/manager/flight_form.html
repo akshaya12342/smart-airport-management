@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}Flight Schedule - {{ title }}{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-airplane-engines-fill text-primary me-2"></i> {{ title }}
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="card card-ops shadow-lg">
+      <div class="card-ops-header d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0">{{ title }}</h5>
+        <a href="{% url 'manager_flights' %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST">
+          {% csrf_token %}
+          
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label text-dark small fw-bold">Flight Number</label>
+              {{ form.flight_number }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-dark small fw-bold">Airline</label>
+              {{ form.airline }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-dark small fw-bold">Assigned Aircraft</label>
+              {{ form.aircraft }}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label text-dark small fw-bold">Source Airport (Origin)</label>
+              {{ form.source_airport }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-dark small fw-bold">Destination Airport</label>
+              {{ form.destination_airport }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-dark small fw-bold">Flight Type</label>
+              {{ form.flight_type }}
+            </div>
+          </div>
+
+          <!-- Scheduled Departure Section with 12-Hour AM/PM -->
+          <div class="card p-3 mb-3 bg-light border-0 rounded-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label text-dark small fw-bold mb-0">
+                <i class="bi bi-clock-fill text-primary me-1"></i> Scheduled Departure (Date, Time &amp; AM / PM)
+              </label>
+              <span class="badge bg-primary bg-opacity-10 text-primary small">12-Hour Format</span>
+            </div>
+            <div class="row g-2">
+              <div class="col-md-5">
+                <label class="small text-muted mb-1">Departure Date</label>
+                {{ form.departure_date }}
+                {% if form.departure_date.errors %}<div class="text-danger small mt-1">{{ form.departure_date.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="small text-muted mb-1">Time (hh:mm)</label>
+                {{ form.departure_time }}
+                {% if form.departure_time.errors %}<div class="text-danger small mt-1">{{ form.departure_time.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="small text-muted mb-1">AM / PM</label>
+                {{ form.departure_meridian }}
+                {% if form.departure_meridian.errors %}<div class="text-danger small mt-1">{{ form.departure_meridian.errors }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Scheduled Arrival Section with 12-Hour AM/PM -->
+          <div class="card p-3 mb-3 bg-light border-0 rounded-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label text-dark small fw-bold mb-0">
+                <i class="bi bi-clock-history text-success me-1"></i> Scheduled Arrival (Date, Time &amp; AM / PM)
+              </label>
+              <span class="badge bg-success bg-opacity-10 text-success small">12-Hour Format</span>
+            </div>
+            <div class="row g-2">
+              <div class="col-md-5">
+                <label class="small text-muted mb-1">Arrival Date</label>
+                {{ form.arrival_date }}
+                {% if form.arrival_date.errors %}<div class="text-danger small mt-1">{{ form.arrival_date.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="small text-muted mb-1">Time (hh:mm)</label>
+                {{ form.arrival_time }}
+                {% if form.arrival_time.errors %}<div class="text-danger small mt-1">{{ form.arrival_time.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="small text-muted mb-1">AM / PM</label>
+                {{ form.arrival_meridian }}
+                {% if form.arrival_meridian.errors %}<div class="text-danger small mt-1">{{ form.arrival_meridian.errors }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label text-dark small fw-bold">Initial Status</label>
+              {{ form.status }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-dark small fw-bold">Assigned Gate</label>
+              {{ form.gate }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-dark small fw-bold">Base Ticket Price (₹)</label>
+              {{ form.base_price }}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Delay Minutes (if any)</label>
+              {{ form.delay_minutes }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Delay Cause</label>
+              {{ form.delay_reason }}
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+            <i class="bi bi-check2-circle me-1"></i> Save Flight Schedule
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

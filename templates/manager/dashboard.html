@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+
+{% block title %}Airport Operations Control Center (AOCC){% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-display text-primary me-2"></i> Airport Operations Control Center (AOCC)
+</h5>
+{% endblock %}
+
+{% block content %}
+<!-- Master Metric KPI Cards -->
+<div class="row g-3 mb-4">
+  
+  <div class="col-6 col-md-3 col-xl-2">
+    <div class="stat-card blue shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.68rem;">TOTAL FLIGHTS</small>
+      <div class="fs-3 fw-bold mt-1">{{ total_flights_count }}</div>
+      <small class="opacity-75" style="font-size: 0.72rem;">{{ active_flights_count }} Active Ops</small>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3 col-xl-2">
+    <div class="stat-card amber shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.68rem;">DELAYED FLIGHTS</small>
+      <div class="fs-3 fw-bold mt-1">{{ delayed_flights_count }}</div>
+      <small class="opacity-75" style="font-size: 0.72rem;">{{ cancelled_flights_count }} Cancelled</small>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3 col-xl-2">
+    <div class="stat-card emerald shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.68rem;">GATES AVAILABLE</small>
+      <div class="fs-3 fw-bold mt-1">{{ available_gates_count }}</div>
+      <small class="opacity-75" style="font-size: 0.72rem;">{{ occupied_gates_count }} Occupied</small>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3 col-xl-2">
+    <div class="stat-card purple shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.68rem;">TOTAL PASSENGERS</small>
+      <div class="fs-3 fw-bold mt-1">{{ total_passengers_count }}</div>
+      <small class="opacity-75" style="font-size: 0.72rem;">Booked Seats</small>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3 col-xl-2">
+    <div class="stat-card indigo shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.68rem;">BAGGAGE VOLUME</small>
+      <div class="fs-3 fw-bold mt-1">{{ total_baggage_count }}</div>
+      <small class="opacity-75" style="font-size: 0.72rem;">{{ delayed_baggage_count }} Delayed/Risk</small>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3 col-xl-2">
+    <div class="stat-card rose shadow-sm p-3">
+      <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.68rem;">STAFF ON DUTY</small>
+      <div class="fs-3 fw-bold mt-1">{{ available_staff_count }}</div>
+      <small class="opacity-75" style="font-size: 0.72rem;">{{ assigned_staff_count }} Assigned</small>
+    </div>
+  </div>
+
+</div>
+
+<!-- AI PREDICTIVE INSIGHTS & REAL-TIME ALERTS -->
+<div class="row g-4 mb-4">
+  <div class="col-12">
+    <div class="card card-ops shadow-sm p-4" style="background: linear-gradient(135deg, #ede9fe 0%, #e0f2fe 50%, #fef3c7 100%); border: 1px solid #ddd6fe;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <span class="badge bg-indigo bg-opacity-25 text-primary font-monospace mb-1 border border-primary border-opacity-25"><i class="bi bi-cpu-fill me-1"></i> AI PREDICTIVE ENGINE ACTIVE</span>
+          <h4 class="fw-bold text-dark mb-0">Airport Ground Risk & Turnaround Predictions</h4>
+        </div>
+        <a href="{% url 'manager_ai_insights' %}" class="btn btn-sm btn-primary shadow-sm">
+          <i class="bi bi-graph-up-arrow me-1"></i> View Detailed AI Insights
+        </a>
+      </div>
+
+      <div class="row g-3">
+        {% for pred in ai_predictions|slice:":3" %}
+          <div class="col-md-4">
+            <div class="p-3 bg-white bg-opacity-80 rounded border {% if pred.ground_risk_score > 50 %}border-danger{% elif pred.ground_risk_score > 30 %}border-warning{% else %}border-success{% endif %} h-100 shadow-xs">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong class="text-dark font-monospace fs-6">{{ pred.flight.flight_number }}</strong>
+                <span class="badge {% if pred.risk_level == 'CRITICAL' or pred.risk_level == 'HIGH' %}bg-danger{% elif pred.risk_level == 'MEDIUM' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                  {{ pred.risk_level }} RISK ({{ pred.ground_risk_score|floatformat:0 }}%)
+                </span>
+              </div>
+              <div class="text-dark small mb-2">
+                {{ pred.flight.source_airport.iata_code }} → {{ pred.flight.destination_airport.iata_code }} (Gate: {{ pred.flight.gate.gate_number|default:"TBD" }})
+              </div>
+              <div class="text-secondary small mb-2" style="font-size: 0.75rem;">
+                <i class="bi bi-clock me-1"></i> Pred. Delay: <strong class="text-warning">+{{ pred.predicted_delay_minutes|floatformat:0 }}m</strong> &bull; Turnaround: <strong class="text-primary">{{ pred.predicted_turnaround_minutes|floatformat:0 }}m</strong>
+              </div>
+              
+              {% if pred.recommendations %}
+                <div class="p-2 bg-light rounded border" style="font-size: 0.72rem;">
+                  <strong class="text-primary d-block mb-1">AI Recommendation:</strong>
+                  <span class="text-secondary">{{ pred.recommendations.0 }}</span>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHARTS & OPERATIONAL OVERVIEW -->
+<div class="row g-4 mb-4">
+  
+  <!-- Chart 1: Flight Status Distribution -->
+  <div class="col-lg-6">
+    <div class="card card-ops h-100 p-4 shadow-sm">
+      <h5 class="fw-bold text-dark mb-3"><i class="bi bi-pie-chart-fill text-primary me-2"></i> Flight Operational Status</h5>
+      <div style="height: 250px;">
+        <canvas id="flightStatusChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 2: Hourly Gate Occupancy -->
+  <div class="col-lg-6">
+    <div class="card card-ops h-100 p-4 shadow-sm">
+      <h5 class="fw-bold text-dark mb-3"><i class="bi bi-bar-chart-fill text-success me-2"></i> Hourly Gate Capacity & Occupancy</h5>
+      <div style="height: 250px;">
+        <canvas id="gateOccupancyChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MASTER FLIGHT OPERATIONS BOARD & RECENT ISSUES -->
+<div class="row g-4">
+  
+  <!-- Active Flight Schedule Board -->
+  <div class="col-lg-8">
+    <div class="card card-ops shadow-sm">
+      <div class="card-ops-header d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-airplane-engines text-primary me-2"></i> Active Airport Flight Board</h5>
+        <div class="d-flex gap-2">
+          <a href="{% url 'manager_add_flight' %}" class="btn btn-sm btn-primary fw-bold">+ Add Flight</a>
+          <a href="{% url 'manager_flights' %}" class="btn btn-sm btn-outline-secondary">View All</a>
+        </div>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-ops mb-0">
+            <thead>
+              <tr>
+                <th>Flight</th>
+                <th>Route</th>
+                <th>Departure</th>
+                <th>Gate</th>
+                <th>Status</th>
+                <th>Delay</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fl in recent_flights %}
+                <tr>
+                  <td>
+                    <strong class="text-primary font-monospace">{{ fl.flight_number }}</strong>
+                    <div class="text-muted small">{{ fl.airline.name }}</div>
+                  </td>
+                  <td>
+                    <strong class="text-dark">{{ fl.source_airport.iata_code }} → {{ fl.destination_airport.iata_code }}</strong>
+                    <div class="text-muted small">{{ fl.flight_type }}</div>
+                  </td>
+                  <td>
+                    <strong class="text-dark">{{ fl.scheduled_departure|date:"h:i A" }}</strong>
+                    <div class="text-muted small">{{ fl.scheduled_departure|date:"d M" }}</div>
+                  </td>
+                  <td>
+                    {% if fl.gate %}
+                      <span class="badge bg-light border text-dark fs-6">{{ fl.gate.gate_number }}</span>
+                    {% else %}
+                      <a href="{% url 'manager_allocate_gate' fl.id %}" class="badge bg-danger text-decoration-none">Assign Gate (AI)</a>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge badge-status {{ fl.status_css_class }}">
+                      {{ fl.get_status_display }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if fl.delay_minutes > 0 %}
+                      <span class="text-warning fw-bold">+{{ fl.delay_minutes }}m</span>
+                    {% else %}
+                      <span class="text-success">0m</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'manager_update_flight_status' fl.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-sliders"></i> Status
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Operational Incidents & Dispatch Feed -->
+  <div class="col-lg-4">
+    <div class="card card-ops shadow-sm">
+      <div class="card-ops-header d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-exclamation-octagon-fill text-warning me-2"></i> Reported Issues</h5>
+        <a href="{% url 'manager_issues' %}" class="btn btn-sm btn-outline-warning" style="font-size: 0.72rem;">Desk</a>
+      </div>
+
+      <div class="card-body p-3">
+        {% if open_issues %}
+          <div class="list-group list-group-flush bg-transparent">
+            {% for issue in open_issues %}
+              <div class="list-group-item bg-transparent text-dark px-0 py-2">
+                <div class="d-flex justify-content-between align-items-start">
+                  <strong class="text-warning small text-truncate" style="max-width: 180px;">{{ issue.title }}</strong>
+                  <span class="badge {% if issue.priority == 'HIGH' or issue.priority == 'CRITICAL' %}bg-danger{% else %}bg-warning text-dark{% endif %}" style="font-size: 0.65rem;">
+                    {{ issue.get_priority_display }}
+                  </span>
+                </div>
+                <p class="text-secondary small mb-1 mt-1" style="font-size: 0.78rem;">{{ issue.description|truncatechars:85 }}</p>
+                <div class="d-flex justify-content-between text-muted" style="font-size: 0.7rem;">
+                  <span>By: {{ issue.reported_by.get_full_name|default:issue.reported_by.username }}</span>
+                  <a href="{% url 'manager_issues' %}" class="text-primary text-decoration-none fw-bold">Resolve &rarr;</a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-muted small">
+            <i class="bi bi-check2-circle fs-2 text-success d-block mb-1"></i>
+            No unhandled operational issues in queue.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Chart 1: Flight Status Distribution
+  const ctx1 = document.getElementById('flightStatusChart').getContext('2d');
+  new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: ['Scheduled', 'Delayed', 'Boarding', 'Departed', 'Cancelled'],
+      datasets: [{
+        data: [{{ active_flights_count }}, {{ delayed_flights_count }}, 2, 4, {{ cancelled_flights_count }}],
+        backgroundColor: ['#0284c7', '#f59e0b', '#8b5cf6', '#94a3b8', '#ef4444'],
+        borderColor: '#ffffff',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#334155', font: { family: 'Inter', size: 12 } } }
+      }
+    }
+  });
+
+  // Chart 2: Hourly Gate Capacity
+  const ctx2 = document.getElementById('gateOccupancyChart').getContext('2d');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+      datasets: [
+        {
+          label: 'Occupied Gates',
+          data: [3, 6, 8, 5, 7, 6, 8, 7, 4],
+          backgroundColor: '#38bdf8',
+          borderRadius: 4
+        },
+        {
+          label: 'Total Capacity',
+          data: [10, 10, 10, 10, 10, 10, 10, 10, 10],
+          backgroundColor: '#e2e8f0',
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(0,0,0,0.04)' }, beginAtZero: true }
+      },
+      plugins: {
+        legend: { labels: { color: '#334155', font: { family: 'Inter' } } }
+      }
+    }
+  });
+</script>
+{% endblock %}

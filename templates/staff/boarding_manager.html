@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}Boarding Console - {{ flight.flight_number }}{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-person-check-fill text-success me-2"></i> Boarding Console: {{ flight.flight_number }}
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Header Navigation -->
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <a href="{% url 'assigned_flight_detail' flight.id %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> Back to Flight Operations
+      </a>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-light border text-dark">Gate: <strong class="text-warning">{{ flight.gate.gate_number|default:"TBD" }}</strong></span>
+        <span class="badge bg-light border text-dark">Departure: <strong class="text-dark">{{ flight.scheduled_departure|date:"h:i A" }}</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-Time Boarding Progress Gauge Card -->
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm">
+      <div class="row g-3 align-items-center">
+        
+        <div class="col-md-3 text-center border-end">
+          <small class="text-secondary text-uppercase fw-bold" style="font-size: 0.72rem;">TOTAL PASSENGERS</small>
+          <div class="fs-1 fw-bold text-dark mt-1">{{ total_passengers }}</div>
+          <small class="text-muted">Booked seats</small>
+        </div>
+
+        <div class="col-md-3 text-center border-end">
+          <small class="text-secondary text-uppercase fw-bold" style="font-size: 0.72rem;">BOARDED PASSENGERS</small>
+          <div class="fs-1 fw-bold text-success mt-1" id="boarded_count_display">{{ boarded_passengers }}</div>
+          <small class="text-success">Processed through gate</small>
+        </div>
+
+        <div class="col-md-3 text-center border-end">
+          <small class="text-secondary text-uppercase fw-bold" style="font-size: 0.72rem;">PENDING PASSENGERS</small>
+          <div class="fs-1 fw-bold text-warning mt-1" id="pending_count_display">{{ pending_passengers }}</div>
+          <small class="text-warning">Awaiting gate scan</small>
+        </div>
+
+        <div class="col-md-3 text-center">
+          <small class="text-secondary text-uppercase fw-bold" style="font-size: 0.72rem;">BOARDING PROGRESS</small>
+          <div class="fs-1 fw-bold text-primary mt-1" id="pct_count_display">{{ boarding_pct }}%</div>
+          <div class="progress mt-2" style="height: 10px; background-color: #e2e8f0;">
+            <div class="progress-bar bg-primary" id="progress_bar_elem" role="progressbar" style="width: {{ boarding_pct }}%;" aria-valuenow="{{ boarding_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Passenger Manifest & Live Boarding Action List -->
+  <div class="col-12">
+    <div class="card card-ops shadow-sm">
+      <div class="card-ops-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h5 class="fw-bold text-dark mb-0"><i class="bi bi-people-fill text-success me-2"></i> Boarding Passenger Manifest</h5>
+          <small class="text-secondary">Assigned Flight {{ flight.flight_number }} manifest only</small>
+        </div>
+
+        <!-- Search input -->
+        <form method="GET" action="{% url 'staff_boarding_manager' flight.id %}" class="d-flex gap-2">
+          <input type="text" name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="Search Seat / Name / PNR">
+          <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
+        </form>
+      </div>
+
+      <div class="card-body p-0">
+        {% if boarding_records %}
+          <div class="table-responsive">
+            <table class="table table-ops mb-0">
+              <thead>
+                <tr>
+                  <th>Seq</th>
+                  <th>Seat</th>
+                  <th>Passenger Name</th>
+                  <th>Booking Ref</th>
+                  <th>Boarding Status</th>
+                  <th>Boarding Time</th>
+                  <th class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in boarding_records %}
+                  <tr id="row-boarding-{{ r.id }}" class="{% if r.boarding_status == 'BOARDED' %}table-success bg-opacity-10{% endif %}">
+                    <td class="font-monospace text-muted">{{ r.sequence_number }}</td>
+                    <td>
+                      <span class="badge bg-primary fs-6 px-3 py-1 font-monospace">{{ r.booking.seat_number }}</span>
+                    </td>
+                    <td>
+                      <strong class="text-dark">{{ r.booking.passenger_name }}</strong>
+                      <div class="text-muted small">{{ r.passenger.email }}</div>
+                    </td>
+                    <td>
+                      <span class="badge bg-light border text-dark font-monospace">{{ r.booking.booking_reference }}</span>
+                    </td>
+                    <td>
+                      <span id="badge-status-{{ r.id }}" class="badge {% if r.boarding_status == 'BOARDED' %}bg-success{% else %}bg-secondary{% endif %}">
+                        {{ r.get_boarding_status_display }}
+                      </span>
+                    </td>
+                    <td class="small text-muted font-monospace" id="time-status-{{ r.id }}">
+                      {{ r.boarding_time|date:"h:i:s A"|default:"--" }}
+                    </td>
+                    <td class="text-end">
+                      {% if r.boarding_status != 'BOARDED' %}
+                        <button onclick="markPassengerBoarded({{ flight.id }}, {{ r.id }})" id="btn-board-{{ r.id }}" class="btn btn-sm btn-success fw-bold px-3">
+                          <i class="bi bi-check-lg me-1"></i> Mark Boarded
+                        </button>
+                      {% else %}
+                        <span class="badge bg-success bg-opacity-25 text-success border border-success p-2">
+                          <i class="bi bi-check-circle-fill me-1"></i> Boarded
+                        </span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <p>No passengers found on this flight manifest matching your search query.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function markPassengerBoarded(flightId, boardingId) {
+    const url = `/staff/flight/${flightId}/boarding/${boardingId}/mark/`;
+    
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        // Update UI counts and progress bar
+        document.getElementById('boarded_count_display').innerText = data.boarded_count;
+        document.getElementById('pending_count_display').innerText = data.pending_count;
+        document.getElementById('pct_count_display').innerText = data.boarding_pct + '%';
+        document.getElementById('progress_bar_elem').style.width = data.boarding_pct + '%';
+
+        // Update row
+        const badge = document.getElementById(`badge-status-${boardingId}`);
+        if (badge) {
+          badge.className = 'badge bg-success';
+          badge.innerText = 'Boarded';
+        }
+
+        const timeElem = document.getElementById(`time-status-${boardingId}`);
+        if (timeElem) {
+          const now = new Date();
+          timeElem.innerText = now.toLocaleTimeString();
+        }
+
+        const btn = document.getElementById(`btn-board-${boardingId}`);
+        if (btn) {
+          btn.outerHTML = '<span class="badge bg-success bg-opacity-25 text-success border border-success p-2"><i class="bi bi-check-circle-fill me-1"></i> Boarded</span>';
+        }
+      }
+    })
+    .catch(err => console.error(err));
+  }
+</script>
+{% endblock %}

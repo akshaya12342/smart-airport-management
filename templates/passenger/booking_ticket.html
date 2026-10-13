@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+
+{% block title %}Digital Boarding Pass - {{ booking.booking_reference }}{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-ticket-perforated-fill text-primary me-2"></i> Digital Boarding Pass & E-Ticket
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    
+    <!-- Action Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <a href="{% url 'passenger_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+      </a>
+      <div class="d-flex gap-2">
+        {% if booking.status != 'CANCELLED' %}
+          <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#cancelTicketModal">
+            <i class="bi bi-x-circle me-1"></i> Cancel Ticket
+          </button>
+          <button onclick="window.print()" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold">
+            <i class="bi bi-printer-fill me-1"></i> Print Boarding Pass
+          </button>
+        {% else %}
+          <span class="badge bg-danger fs-6 px-3 py-2 rounded-pill">
+            <i class="bi bi-x-octagon-fill me-1"></i> BOOKING CANCELLED
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if booking.status == 'CANCELLED' %}
+    <!-- Cancellation Notice Card -->
+    <div class="alert alert-danger border-danger border-opacity-50 shadow-sm rounded-4 p-4 mb-4">
+      <div class="d-flex align-items-center gap-3">
+        <div class="p-3 bg-danger text-white rounded-circle">
+          <i class="bi bi-x-octagon-fill fs-3"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold text-danger mb-1">THIS TICKET HAS BEEN CANCELLED</h5>
+          <p class="mb-0 text-dark small">
+            Seat <strong>{{ booking.seat_number }}</strong> has been released back to the flight inventory and is available for other passengers to book. A full refund of <strong>₹{{ booking.ticket_price|floatformat:2 }}</strong> has been processed to your original payment method.
+          </p>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- DIGITAL BOARDING PASS CARD -->
+    <div class="boarding-pass-card shadow-lg mb-4 {% if booking.status == 'CANCELLED' %}opacity-75{% endif %} position-relative">
+      
+      {% if booking.status == 'CANCELLED' %}
+      <!-- CANCELLED WATERMARK STAMP -->
+      <div class="position-absolute top-50 start-50 translate-middle pointer-events-none" style="z-index: 10; transform: translate(-50%, -50%) rotate(-25deg); opacity: 0.85;">
+        <div class="border border-4 border-danger text-danger px-4 py-2 rounded-3 text-center fw-bold font-monospace" style="font-size: 2.2rem; letter-spacing: 0.2em; text-transform: uppercase; background: rgba(255,255,255,0.85);">
+          CANCELLED
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Boarding Pass Header -->
+      <div class="boarding-pass-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-airplane-engines-fill text-info fs-3"></i>
+          <div>
+            <h5 class="fw-bold mb-0 text-white">{{ flight.airline.name }}</h5>
+            <small class="text-secondary font-monospace">ELECTRONIC BOARDING PASS</small>
+          </div>
+        </div>
+        <div class="text-end font-monospace">
+          <div class="fs-5 fw-bold text-info">{{ flight.flight_number }}</div>
+          <small class="text-secondary">CLASS: ECONOMY</small>
+        </div>
+      </div>
+
+      <!-- Boarding Pass Body -->
+      <div class="boarding-pass-body">
+        
+        <!-- Passenger & Booking Reference Row -->
+        <div class="row g-3 border-bottom pb-3 mb-3">
+          <div class="col-md-6">
+            <small class="text-muted d-block text-uppercase" style="font-size: 0.72rem;">PASSENGER NAME</small>
+            <h5 class="fw-bold text-dark mb-0">{{ booking.passenger_name }}</h5>
+            <small class="text-muted">ID/Passport: {{ booking.passenger_id_passport|default:"VERIFIED" }}</small>
+          </div>
+          <div class="col-md-3">
+            <small class="text-muted d-block text-uppercase" style="font-size: 0.72rem;">BOOKING REFERENCE (PNR)</small>
+            <h5 class="fw-bold text-primary font-monospace mb-0">{{ booking.booking_reference }}</h5>
+          </div>
+          <div class="col-md-3">
+            <small class="text-muted d-block text-uppercase" style="font-size: 0.72rem;">ETKT NUMBER</small>
+            <span class="font-monospace text-dark fw-semibold">098-{{ booking.id }}84201</span>
+          </div>
+        </div>
+
+        <!-- Route & Departure Details -->
+        <div class="row g-3 align-items-center border-bottom pb-4 mb-3">
+          <div class="col-4">
+            <small class="text-muted d-block" style="font-size: 0.72rem;">FROM (ORIGIN)</small>
+            <h3 class="fw-bold text-dark mb-0">{{ flight.source_airport.iata_code }}</h3>
+            <div class="fw-semibold text-secondary">{{ flight.source_airport.city }}</div>
+            <small class="text-muted">{{ flight.scheduled_departure|date:"d M Y" }}</small>
+          </div>
+
+          <div class="col-4 text-center">
+            <i class="bi bi-airplane-fill fs-3 text-primary"></i>
+            <div class="text-muted small">NON-STOP</div>
+            <div class="badge bg-light text-dark border">{{ flight.flight_type }}</div>
+          </div>
+
+          <div class="col-4 text-end">
+            <small class="text-muted d-block" style="font-size: 0.72rem;">TO (DESTINATION)</small>
+            <h3 class="fw-bold text-dark mb-0">{{ flight.destination_airport.iata_code }}</h3>
+            <div class="fw-semibold text-secondary">{{ flight.destination_airport.city }}</div>
+            <small class="text-muted">{{ flight.scheduled_arrival|date:"d M Y" }}</small>
+          </div>
+        </div>
+
+        <!-- Seat, Gate, Boarding Key Numbers Highlight Box -->
+        <div class="row g-2 p-3 bg-light rounded border mb-4 text-center">
+          <div class="col-3 border-end">
+            <small class="text-muted d-block text-uppercase font-monospace" style="font-size: 0.7rem;">GATE</small>
+            <div class="fs-2 fw-bold text-danger">{{ flight.gate.gate_number|default:"TBD" }}</div>
+            <small class="text-muted">{{ flight.gate.terminal|default:"Terminal 1" }}</small>
+          </div>
+          <div class="col-3 border-end">
+            <small class="text-muted d-block text-uppercase font-monospace" style="font-size: 0.7rem;">SEAT</small>
+            <div class="fs-2 fw-bold text-primary">{{ booking.seat_number }}</div>
+            <small class="text-muted">ZONE 2</small>
+          </div>
+          <div class="col-3 border-end">
+            <small class="text-muted d-block text-uppercase font-monospace" style="font-size: 0.7rem;">BOARDING TIME</small>
+            <div class="fs-2 fw-bold text-dark">{{ flight.scheduled_departure|date:"h:i A" }}</div>
+            <small class="text-muted">GATE CLOSES -15M</small>
+          </div>
+          <div class="col-3">
+            <small class="text-muted d-block text-uppercase font-monospace" style="font-size: 0.7rem;">SEQ NUMBER</small>
+            <div class="fs-2 fw-bold text-secondary">{{ boarding_rec.sequence_number|default:"01" }}</div>
+            <small class="text-muted">PRIORITY</small>
+          </div>
+        </div>
+
+        <!-- Payment Receipt / Status Banner -->
+        <div class="p-3 mb-4 rounded-4 border d-flex justify-content-between align-items-center flex-wrap gap-2" style="background: {% if booking.status == 'CANCELLED' %}#fef2f2; border-color: #fecaca{% else %}#f0fdf4; border-color: #bbf7d0{% endif %} !important;">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi {% if booking.status == 'CANCELLED' %}bi-arrow-counterclockwise text-danger{% else %}bi-shield-check text-success{% endif %} fs-3"></i>
+            <div>
+              <strong class="{% if booking.status == 'CANCELLED' %}text-danger{% else %}text-success{% endif %} small d-block">
+                {% if booking.status == 'CANCELLED' %}REFUND SETTLED &amp; SEAT RELEASED{% else %}PAYMENT VERIFIED &amp; SETTLED{% endif %}
+              </strong>
+              <span class="text-secondary small font-monospace">Fare: ₹{{ booking.ticket_price|floatformat:0 }} &bull; Channel: {{ booking.get_booking_channel_display }}</span>
+            </div>
+          </div>
+          <span class="badge {% if booking.status == 'CANCELLED' %}bg-danger{% else %}bg-success{% endif %} text-white px-3 py-2 rounded-pill font-monospace">
+            {% if booking.status == 'CANCELLED' %}
+              <i class="bi bi-x-circle-fill me-1"></i> CANCELLED &bull; REFUNDED
+            {% else %}
+              <i class="bi bi-check-circle-fill me-1"></i> PAID &bull; CONFIRMED
+            {% endif %}
+          </span>
+        </div>
+
+        <!-- Baggage Tags Area -->
+        {% if baggage_items %}
+        <div class="p-3 bg-light rounded-4 border mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold text-dark mb-0"><i class="bi bi-luggage-fill text-primary me-1"></i> Registered Baggage Tags</h6>
+            <span class="badge bg-secondary">{{ baggage_items.count }} Checked Bag(s)</span>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            {% for b in baggage_items %}
+              <div class="bg-white border p-2 rounded d-flex align-items-center gap-2">
+                <i class="bi bi-tag-fill text-primary"></i>
+                <div>
+                  <div class="fw-bold font-monospace small text-dark">{{ b.tag_number }}</div>
+                  <div class="text-muted" style="font-size: 0.72rem;">Weight: {{ b.weight_kg }}kg &bull; Status: {{ b.get_status_display }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Simulated Barcode Footer -->
+        <div class="text-center pt-2 border-top">
+          <div class="font-monospace text-muted small mb-1">M1{{ booking.passenger_name }}/{{ booking.booking_reference }} {{ flight.source_airport.iata_code }}{{ flight.destination_airport.iata_code }}{{ flight.airline.iata_code }} {{ flight.flight_number }}</div>
+          <div class="d-flex justify-content-center align-items-center gap-1 my-2" style="height: 48px; background: repeating-linear-gradient(90deg, #000 0px, #000 2px, #fff 2px, #fff 5px, #000 5px, #000 8px, #fff 8px, #fff 10px, #000 10px, #000 14px, #fff 14px, #fff 16px); width: 85%; margin: 0 auto;">
+          </div>
+          <small class="text-muted font-monospace" style="font-size: 0.7rem;">Please present this pass along with valid Government Issued Photo ID at the gate.</small>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- CANCEL TICKET CONFIRMATION MODAL -->
+{% if booking.status != 'CANCELLED' %}
+<div class="modal fade" id="cancelTicketModal" tabindex="-1" aria-labelledby="cancelTicketModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-danger d-flex align-items-center gap-2" id="cancelTicketModalLabel">
+          <i class="bi bi-exclamation-octagon-fill fs-4"></i> Confirm Ticket Cancellation
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body py-4">
+        <p class="text-secondary mb-3">
+          Are you sure you want to cancel your booked ticket? This action is permanent and will release your reserved seat.
+        </p>
+        
+        <div class="p-3 bg-light rounded-3 border mb-3">
+          <div class="row g-2 small">
+            <div class="col-6">
+              <span class="text-muted d-block font-monospace" style="font-size: 0.72rem;">FLIGHT</span>
+              <strong class="text-dark">{{ flight.airline.name }} &bull; {{ flight.flight_number }}</strong>
+            </div>
+            <div class="col-6">
+              <span class="text-muted d-block font-monospace" style="font-size: 0.72rem;">BOOKING REF</span>
+              <strong class="text-primary font-monospace">{{ booking.booking_reference }}</strong>
+            </div>
+            <div class="col-6">
+              <span class="text-muted d-block font-monospace" style="font-size: 0.72rem;">RESERVED SEAT</span>
+              <span class="badge bg-primary fs-6 px-2 py-1 font-monospace">{{ booking.seat_number }}</span>
+            </div>
+            <div class="col-6">
+              <span class="text-muted d-block font-monospace" style="font-size: 0.72rem;">REFUND AMOUNT</span>
+              <strong class="text-success fs-6 font-monospace">₹{{ booking.ticket_price|floatformat:2 }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-warning py-2 px-3 small border-0 rounded-3 mb-0 d-flex align-items-start gap-2">
+          <i class="bi bi-info-circle-fill text-warning flex-shrink-0 mt-1"></i>
+          <div>
+            <strong>Seat Release Notice:</strong> Seat <strong>{{ booking.seat_number }}</strong> will immediately become available in the flight seat map for other passengers.
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
+        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Keep My Ticket</button>
+        <form method="POST" action="{% url 'passenger_cancel_booking' booking.id %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+            <i class="bi bi-trash3-fill me-1"></i> Yes, Confirm Cancellation
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

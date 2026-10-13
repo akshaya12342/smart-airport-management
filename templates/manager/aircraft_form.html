@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Register Aircraft - Airport System{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-shield-shaded text-primary me-2"></i> Register New Aircraft Fleet Unit
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card card-ops shadow-lg">
+      <div class="card-ops-header d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0">Register Aircraft Fleet Unit</h5>
+        <a href="{% url 'manager_aircraft' %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST">
+          {% csrf_token %}
+          
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Registration Number (Tail Sign)</label>
+              {{ form.registration_number }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Model Name</label>
+              {{ form.model }}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Aircraft Classification</label>
+              {{ form.aircraft_type }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Seating Capacity</label>
+              {{ form.seating_capacity }}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Operating Airline</label>
+              {{ form.airline }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Initial Fleet Status</label>
+              {{ form.status }}
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+            <i class="bi bi-check2-circle me-1"></i> Register Aircraft & Auto-Configure Seats
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

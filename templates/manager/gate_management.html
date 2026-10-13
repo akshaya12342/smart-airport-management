@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Gate Operations & Terminal Management{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-door-open-fill text-primary me-2"></i> Gate Operations & Terminal Management
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+
+  <!-- Gate Status Summary Cards -->
+  <div class="col-12">
+    <div class="card card-ops p-4 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <h4 class="fw-bold text-dark mb-1">Airport Gate Stand Operations</h4>
+          <p class="text-secondary small mb-0">Monitor gate occupancy, aircraft compatibility, schedule conflicts, and intelligent AI allocation</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flights Needing Gate Allocation Alert Section -->
+  {% if flights_needing_gates %}
+  <div class="col-12">
+    <div class="card card-ops border-warning shadow-sm">
+      <div class="card-ops-header border-bottom border-warning d-flex justify-content-between align-items-center" style="background: #fffbeb;">
+        <span class="text-warning fw-bold"><i class="bi bi-exclamation-circle-fill me-2"></i> Flights Pending Gate Allocation ({{ flights_needing_gates.count }})</span>
+        <span class="badge bg-warning text-dark">Action Required</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-ops mb-0">
+            <thead>
+              <tr>
+                <th>Flight</th>
+                <th>Airline</th>
+                <th>Route</th>
+                <th>Departure Time</th>
+                <th>Aircraft</th>
+                <th class="text-end">AI Gate Allocation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in flights_needing_gates %}
+                <tr>
+                  <td><strong class="text-primary font-monospace">{{ f.flight_number }}</strong></td>
+                  <td class="text-dark">{{ f.airline.name }}</td>
+                  <td class="text-dark">{{ f.source_airport.iata_code }} → {{ f.destination_airport.iata_code }}</td>
+                  <td class="text-dark">{{ f.scheduled_departure|date:"d M, h:i A" }}</td>
+                  <td>{{ f.aircraft.model|default:"Standard" }} ({{ f.aircraft.registration_number }})</td>
+                  <td class="text-end">
+                    <a href="{% url 'manager_allocate_gate' f.id %}" class="btn btn-sm btn-warning fw-bold text-dark shadow-xs">
+                      <i class="bi bi-cpu me-1"></i> AI Allocate Gate
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Terminal Gate Layout Matrix -->
+  <div class="col-12">
+    <div class="card card-ops shadow-sm">
+      <div class="card-ops-header">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-grid-fill text-primary me-2"></i> All Terminal Gates Status Board</h5>
+      </div>
+
+      <div class="card-body p-4">
+        <div class="row g-3">
+          {% for g in gates %}
+            <div class="col-sm-6 col-md-4 col-lg-3">
+              <div class="p-3 bg-white rounded border {% if g.status == 'AVAILABLE' %}border-success{% elif g.status == 'OCCUPIED' %}border-primary{% elif g.status == 'MAINTENANCE' %}border-danger{% else %}border-warning{% endif %} h-100 shadow-xs">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h4 class="fw-bold text-dark font-monospace mb-0">{{ g.gate_number }}</h4>
+                  <span class="badge {% if g.status == 'AVAILABLE' %}bg-success{% elif g.status == 'OCCUPIED' %}bg-primary{% elif g.status == 'MAINTENANCE' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                    {{ g.get_status_display }}
+                  </span>
+                </div>
+
+                <div class="small text-secondary mb-1">{{ g.terminal }} &bull; <strong class="text-dark">{{ g.get_gate_type_display }}</strong></div>
+                <div class="small text-muted mb-2" style="font-size: 0.72rem;">Compatibility: {{ g.get_compatibility_display }}</div>
+
+                {% if g.flights.all %}
+                  {% with active_flight=g.flights.first %}
+                    <div class="p-2 bg-light rounded border small text-dark" style="font-size: 0.75rem;">
+                      <strong class="text-primary font-monospace">{{ active_flight.flight_number }}</strong> ({{ active_flight.source_airport.iata_code }}→{{ active_flight.destination_airport.iata_code }})
+                      <div class="text-muted" style="font-size: 0.68rem;">Dep: {{ active_flight.scheduled_departure|date:"h:i A" }}</div>
+                    </div>
+                  {% endwith %}
+                {% else %}
+                  <div class="p-2 bg-light rounded border text-muted text-center small" style="font-size: 0.75rem;">
+                    No Active Flight
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

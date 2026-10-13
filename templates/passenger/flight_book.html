@@ -1,0 +1,631 @@
+{% extends 'base.html' %}
+
+{% block title %}Select Seat & Book Flight - {{ flight.flight_number }}{% endblock %}
+
+{% block header_title %}
+<div class="d-flex align-items-center gap-2">
+  <div class="p-2 bg-primary bg-opacity-10 text-primary rounded-circle">
+    <i class="bi bi-ticket-detailed-fill fs-5"></i>
+  </div>
+  <div>
+    <h5 class="mb-0 text-dark fw-bold">Seat Selection &amp; Booking Payment</h5>
+    <small class="text-muted">Interactive aircraft cabin seat allocation &amp; secure checkout</small>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- Flight Summary Card -->
+  <div class="col-12">
+    <div class="flight-ticket-box p-4 shadow-sm bg-white rounded-4 border">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-primary font-monospace fs-6">{{ flight.flight_number }}</span>
+            <span class="badge bg-light text-dark border">{{ flight.airline.name }}</span>
+            <span class="badge bg-white text-muted border">{{ flight.aircraft.model }} ({{ flight.aircraft.registration_number }})</span>
+          </div>
+          <h4 class="fw-bold text-dark mb-1">{{ flight.source_airport.city }} ({{ flight.source_airport.iata_code }}) → {{ flight.destination_airport.city }} ({{ flight.destination_airport.iata_code }})</h4>
+          <span class="text-muted small">
+            <i class="bi bi-calendar-event me-1 text-primary"></i> {{ flight.scheduled_departure|date:"l, d M Y" }} at <strong>{{ flight.scheduled_departure|date:"h:i A" }}</strong> &bull; Gate: <strong class="text-warning font-monospace">{{ flight.gate.gate_number|default:"TBD" }}</strong>
+          </span>
+        </div>
+
+        <div class="text-end">
+          <small class="text-secondary d-block fw-bold" style="font-size: 0.75rem;">FAREST PER PASSENGER</small>
+          <div class="fs-3 fw-bold text-primary font-monospace">₹{{ flight.base_price|floatformat:0 }}</div>
+          <span class="badge bg-success bg-opacity-10 text-success border border-success">{{ available_seats }} Seats Available</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Aircraft Cabin Seat Map (Left Column) -->
+  <div class="col-lg-7">
+    <div class="card card-ops border-0 shadow-sm bg-white p-4 rounded-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h5 class="fw-bold text-dark mb-0"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i> Aircraft Seat Map</h5>
+          <small class="text-muted">Click an available seat to select your preference</small>
+        </div>
+        <div class="d-flex gap-3 small">
+          <span class="d-flex align-items-center gap-1"><span class="badge bg-white text-dark border">Available</span></span>
+          <span class="d-flex align-items-center gap-1"><span class="badge bg-primary text-white">Selected</span></span>
+          <span class="d-flex align-items-center gap-1"><span class="badge bg-light text-muted border">Occupied</span></span>
+        </div>
+      </div>
+
+      <!-- Aircraft Nose Cone Graphics -->
+      <div class="text-center py-2 mb-3 border-bottom">
+        <i class="bi bi-triangle-fill text-primary d-block" style="transform: rotate(0deg); font-size: 1.5rem;"></i>
+        <small class="text-muted font-monospace text-uppercase" style="font-size: 0.7rem;">FRONT OF AIRCRAFT / COCKPIT</small>
+      </div>
+
+      <!-- Seat Map Grid Scroll Container -->
+      <div class="cabin-map p-2 rounded-3" style="max-height: 520px; overflow-y: auto; background: #f8fafc;">
+        
+        <!-- Column Header Labels -->
+        <div class="d-flex justify-content-center align-items-center gap-2 mb-3 text-muted small fw-bold font-monospace">
+          <div style="width: 42px;" class="text-center">A</div>
+          <div style="width: 42px;" class="text-center">B</div>
+          <div style="width: 42px;" class="text-center">C</div>
+          <div style="width: 20px;" class="text-center text-primary">||</div>
+          <div style="width: 42px;" class="text-center">D</div>
+          <div style="width: 42px;" class="text-center">E</div>
+          <div style="width: 42px;" class="text-center">F</div>
+        </div>
+
+        <!-- Render Seat Rows -->
+        {% for row_num, seats in seat_rows.items %}
+          <div class="seat-row d-flex align-items-center justify-content-center gap-2 mb-2">
+            <span class="text-muted font-monospace small" style="width: 25px; text-align: right; margin-right: 5px;">{{ row_num }}</span>
+            
+            {% for s in seats %}
+              {% if forloop.counter == 4 %}
+                <!-- Aisle Space -->
+                <div style="width: 20px;" class="text-center text-muted opacity-25">|</div>
+              {% endif %}
+
+              <div class="seat-item {% if s.is_booked %}booked{% endif %} {% if s.seat_class == 'BUSINESS' %}business{% endif %}"
+                   data-seat="{{ s.seat_number }}"
+                   {% if not s.is_booked %}onclick="selectSeat('{{ s.seat_number }}')"{% endif %}
+                   title="Seat {{ s.seat_number }} ({% if s.is_booked %}Booked{% else %}Available - {{ s.seat_class }}{% endif %})">
+                {{ s.seat_number }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+
+      </div>
+
+      <div class="text-center py-2 mt-3 border-top">
+        <small class="text-muted font-monospace text-uppercase" style="font-size: 0.7rem;">REAR OF AIRCRAFT / GALLEY</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passenger Details & Payable Form (Right Column) -->
+  <div class="col-lg-5">
+    <div class="card card-ops border-0 shadow-sm bg-white rounded-4 sticky-top" style="top: 1rem;">
+      <div class="card-ops-header border-bottom p-3 rounded-top-4" style="background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%);">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-person-fill text-primary me-2"></i> Passenger &amp; Baggage Details</h5>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST" action="{% url 'confirm_booking' flight.id %}" id="booking_form">
+          {% csrf_token %}
+          
+          <!-- Selected Seat Display Badge -->
+          <div class="p-3 rounded-4 border mb-3 d-flex justify-content-between align-items-center" style="background: #f0fdf4; border-color: #bbf7d0 !important;">
+            <div>
+              <small class="text-secondary d-block fw-bold" style="font-size: 0.72rem;">SELECTED SEAT</small>
+              <strong id="seat_display_text" class="text-success fs-4 font-monospace">None Selected</strong>
+            </div>
+            <i class="bi bi-check-circle-fill text-success fs-3" id="seat_check_icon" style="display: none;"></i>
+          </div>
+
+          <!-- Hidden Input for Selected Seat -->
+          <input type="hidden" name="seat_number" id="selected_seat_input" value="" required>
+          <input type="hidden" name="payment_method" id="payment_method_input" value="UPI">
+          <input type="hidden" name="transaction_id" id="transaction_id_input" value="">
+
+          <div class="mb-3">
+            <label class="form-label text-dark small fw-bold">Passenger Full Name <span class="text-danger">*</span></label>
+            {{ form.passenger_name }}
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6 col-12">
+              <label class="form-label text-dark small fw-bold">Email Address <span class="text-danger">*</span></label>
+              {{ form.passenger_email }}
+            </div>
+            <div class="col-md-6 col-12">
+              <label class="form-label text-dark small fw-bold">Phone Number <span class="text-danger">*</span></label>
+              {{ form.passenger_phone }}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-dark small fw-bold">Govt ID / Passport Number</label>
+            {{ form.passenger_id_passport }}
+          </div>
+
+          <div class="p-3 rounded-4 bg-light border mb-4">
+            <h6 class="fw-bold text-dark small mb-2"><i class="bi bi-luggage-fill text-primary me-1"></i> Checked Baggage</h6>
+            <div class="row g-2 align-items-center">
+              <div class="col-6">
+                <label class="text-muted small">Baggage Weight (kg)</label>
+                {{ form.baggage_weight }}
+              </div>
+              <div class="col-6">
+                <div class="form-check mt-3">
+                  {{ form.special_handling }}
+                  <label class="form-check-label text-dark small" for="id_special_handling">Special Handling (Fragile)</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Price Breakdown Summary -->
+          <div class="border-top pt-3 mb-4">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Base Airfare</span>
+              <span class="font-monospace">₹{{ flight.base_price|floatformat:0 }}</span>
+            </div>
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Airport Terminal &amp; Ground Handling Fee</span>
+              <span class="text-success fw-semibold">₹0 (Free)</span>
+            </div>
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Baggage Allowance (Up to 15kg)</span>
+              <span class="text-success fw-semibold">Included</span>
+            </div>
+            <div class="d-flex justify-content-between fw-bold text-dark fs-5 mt-2 pt-2 border-top">
+              <span>Total Payable</span>
+              <span class="text-primary font-monospace fs-4">₹{{ flight.base_price|floatformat:0 }}</span>
+            </div>
+          </div>
+
+          <!-- Payable / Payment Trigger Button -->
+          <button type="button" class="btn btn-primary btn-lg w-100 fw-bold py-3 shadow rounded-pill" id="confirm_btn" disabled onclick="initiatePaymentGateway()">
+            <i class="bi bi-credit-card-2-front-fill me-2"></i> Proceed to Pay ₹{{ flight.base_price|floatformat:0 }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========================================================================= -->
+<!-- SECURE FLIGHT CHECKOUT & PAYMENT MODAL -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="flightPaymentModal" tabindex="-1" aria-labelledby="flightPaymentModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="modal-header border-0 text-white p-4" style="background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-white bg-opacity-20 p-2 text-white">
+            <i class="bi bi-shield-lock-fill fs-3"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="flightPaymentModalLabel">Secure Flight Payment Gateway</h5>
+            <small class="text-white text-opacity-75">256-Bit Bank Grade SSL Encrypted Checkout</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="modalCloseX"></button>
+      </div>
+
+      <!-- MAIN PAYMENT VIEW -->
+      <div id="paymentFormState" class="modal-body p-4" style="background-color: #f8fafc;">
+        
+        <!-- Order Summary Strip -->
+        <div class="p-3 mb-4 rounded-4 bg-white border shadow-xs">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <span class="badge bg-primary font-monospace fs-6 me-2">{{ flight.flight_number }}</span>
+              <strong class="text-dark">{{ flight.source_airport.city }} → {{ flight.destination_airport.city }}</strong>
+              <div class="text-muted small mt-1">
+                Passenger: <strong id="modalPaxName" class="text-dark">--</strong> &bull; Seat: <strong id="modalSeatNum" class="text-primary font-monospace">--</strong>
+              </div>
+            </div>
+            <div class="text-end">
+              <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem;">TOTAL AMOUNT</small>
+              <span class="fs-4 fw-bold text-success font-monospace">₹{{ flight.base_price|floatformat:0 }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Option Navigation Pills -->
+        <h6 class="fw-bold text-dark small mb-3 text-uppercase tracking-wider">
+          <i class="bi bi-wallet2 text-primary me-2"></i> Select Payment Option
+        </h6>
+
+        <div class="row g-3">
+          <!-- Left Column: Payment Methods List -->
+          <div class="col-md-4 col-12">
+            <div class="nav flex-column nav-pills gap-2" id="payment-tab" role="tablist" aria-orientation="vertical">
+              
+              <button class="nav-link active text-start rounded-3 p-3 border d-flex align-items-center gap-2" id="upi-tab" data-bs-toggle="pill" data-bs-target="#upi-pane" type="button" role="tab" onclick="setPaymentMethod('UPI')">
+                <i class="bi bi-qr-code text-primary fs-5"></i>
+                <div>
+                  <strong class="d-block text-dark small">UPI &amp; QR Code</strong>
+                  <span class="text-muted" style="font-size: 0.72rem;">GPay, PhonePe, Paytm</span>
+                </div>
+              </button>
+
+              <button class="nav-link text-start rounded-3 p-3 border d-flex align-items-center gap-2" id="cards-tab" data-bs-toggle="pill" data-bs-target="#cards-pane" type="button" role="tab" onclick="setPaymentMethod('Credit/Debit Card')">
+                <i class="bi bi-credit-card text-success fs-5"></i>
+                <div>
+                  <strong class="d-block text-dark small">Credit / Debit Card</strong>
+                  <span class="text-muted" style="font-size: 0.72rem;">Visa, Mastercard, RuPay</span>
+                </div>
+              </button>
+
+              <button class="nav-link text-start rounded-3 p-3 border d-flex align-items-center gap-2" id="netbanking-tab" data-bs-toggle="pill" data-bs-target="#netbanking-pane" type="button" role="tab" onclick="setPaymentMethod('Net Banking')">
+                <i class="bi bi-bank text-warning fs-5"></i>
+                <div>
+                  <strong class="d-block text-dark small">Net Banking</strong>
+                  <span class="text-muted" style="font-size: 0.72rem;">All Indian Banks</span>
+                </div>
+              </button>
+
+              <button class="nav-link text-start rounded-3 p-3 border d-flex align-items-center gap-2" id="wallets-tab" data-bs-toggle="pill" data-bs-target="#wallets-pane" type="button" role="tab" onclick="setPaymentMethod('Wallet')">
+                <i class="bi bi-wallet-fill text-info fs-5"></i>
+                <div>
+                  <strong class="d-block text-dark small">Digital Wallets</strong>
+                  <span class="text-muted" style="font-size: 0.72rem;">Paytm, Amazon Pay</span>
+                </div>
+              </button>
+
+            </div>
+          </div>
+
+          <!-- Right Column: Payment Method Details & Input -->
+          <div class="col-md-8 col-12">
+            <div class="tab-content card p-4 border rounded-4 bg-white shadow-xs" id="payment-tabContent">
+              
+              <!-- PANE 1: UPI & QR -->
+              <div class="tab-pane fade show active" id="upi-pane" role="tabpanel">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-phone text-primary me-1"></i> Instant UPI Payment</h6>
+                
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary">Enter Virtual Payment Address (UPI ID)</label>
+                  <div class="input-group">
+                    <input type="text" id="upiIdInput" class="form-control rounded-start-pill font-monospace" placeholder="e.g. yourname@okaxis" value="passenger@upi">
+                    <button class="btn btn-outline-primary rounded-end-pill px-3" type="button" onclick="verifyUPI()">Verify</button>
+                  </div>
+                  <div class="d-flex flex-wrap gap-1 mt-2">
+                    <span class="badge bg-light text-dark border cursor-pointer" onclick="appendUpiHandle('@okaxis')">@okaxis</span>
+                    <span class="badge bg-light text-dark border cursor-pointer" onclick="appendUpiHandle('@okhdfcbank')">@okhdfcbank</span>
+                    <span class="badge bg-light text-dark border cursor-pointer" onclick="appendUpiHandle('@oksbi')">@oksbi</span>
+                    <span class="badge bg-light text-dark border cursor-pointer" onclick="appendUpiHandle('@paytm')">@paytm</span>
+                    <span class="badge bg-light text-dark border cursor-pointer" onclick="appendUpiHandle('@ybl')">@ybl</span>
+                  </div>
+                </div>
+
+                <div class="text-center p-3 rounded-3 bg-light border my-3">
+                  <div class="text-muted small mb-2 fw-bold">OR SCAN INSTANT AIRLINE QR CODE</div>
+                  <div class="p-2 bg-white d-inline-block rounded-3 border shadow-xs">
+                    <!-- Dynamic simulated QR visual -->
+                    <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="100" height="100" fill="#ffffff"/>
+                      <rect x="10" y="10" width="26" height="26" fill="#0f172a"/>
+                      <rect x="14" y="14" width="18" height="18" fill="#ffffff"/>
+                      <rect x="18" y="18" width="10" height="10" fill="#0284c7"/>
+                      <rect x="64" y="10" width="26" height="26" fill="#0f172a"/>
+                      <rect x="68" y="14" width="18" height="18" fill="#ffffff"/>
+                      <rect x="72" y="18" width="10" height="10" fill="#0284c7"/>
+                      <rect x="10" y="64" width="26" height="26" fill="#0f172a"/>
+                      <rect x="14" y="68" width="18" height="18" fill="#ffffff"/>
+                      <rect x="18" y="72" width="10" height="10" fill="#0284c7"/>
+                      <circle cx="50" cy="50" r="10" fill="#2563eb"/>
+                      <rect x="42" y="18" width="8" height="18" fill="#0f172a"/>
+                      <rect x="74" y="42" width="16" height="12" fill="#0f172a"/>
+                      <rect x="42" y="68" width="22" height="14" fill="#0f172a"/>
+                    </svg>
+                  </div>
+                  <div class="text-success small fw-bold mt-2"><i class="bi bi-shield-check me-1"></i> Scan with any UPI App</div>
+                </div>
+              </div>
+
+              <!-- PANE 2: CARDS -->
+              <div class="tab-pane fade" id="cards-pane" role="tabpanel">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-credit-card text-success me-1"></i> Credit / Debit Card Checkout</h6>
+
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary">Card Number</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-credit-card-2-back text-primary"></i></span>
+                    <input type="text" class="form-control font-monospace" id="cardNumberInput" placeholder="4532 8901 2345 6789" value="4532 8812 3456 7890" maxlength="19">
+                  </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label small fw-bold text-secondary">Expiry Date</label>
+                    <input type="text" class="form-control font-monospace text-center" placeholder="MM/YY" value="12/28" maxlength="5">
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small fw-bold text-secondary">CVV / CVC</label>
+                    <input type="password" class="form-control font-monospace text-center" placeholder="•••" value="882" maxlength="4">
+                  </div>
+                </div>
+
+                <div class="mb-2">
+                  <label class="form-label small fw-bold text-secondary">Cardholder Name</label>
+                  <input type="text" id="cardHolderInput" class="form-control" placeholder="Name on card" value="AKSHAYA M">
+                </div>
+              </div>
+
+              <!-- PANE 3: NET BANKING -->
+              <div class="tab-pane fade" id="netbanking-pane" role="tabpanel">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-bank text-warning me-1"></i> Select Bank</h6>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <button type="button" class="btn btn-outline-secondary w-100 p-2 text-start small fw-bold active border-primary text-primary" onclick="selectBank(this, 'State Bank of India')">
+                      <i class="bi bi-building me-1"></i> SBI
+                    </button>
+                  </div>
+                  <div class="col-6">
+                    <button type="button" class="btn btn-outline-secondary w-100 p-2 text-start small fw-bold" onclick="selectBank(this, 'HDFC Bank')">
+                      <i class="bi bi-building me-1"></i> HDFC Bank
+                    </button>
+                  </div>
+                  <div class="col-6">
+                    <button type="button" class="btn btn-outline-secondary w-100 p-2 text-start small fw-bold" onclick="selectBank(this, 'ICICI Bank')">
+                      <i class="bi bi-building me-1"></i> ICICI Bank
+                    </button>
+                  </div>
+                  <div class="col-6">
+                    <button type="button" class="btn btn-outline-secondary w-100 p-2 text-start small fw-bold" onclick="selectBank(this, 'Axis Bank')">
+                      <i class="bi bi-building me-1"></i> Axis Bank
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mb-2">
+                  <label class="form-label small fw-bold text-secondary">All Other Banks</label>
+                  <select class="form-select select-pill">
+                    <option>Kotak Mahindra Bank</option>
+                    <option>Punjab National Bank</option>
+                    <option>Bank of Baroda</option>
+                    <option>Canara Bank</option>
+                    <option>IndusInd Bank</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- PANE 4: WALLETS -->
+              <div class="tab-pane fade" id="wallets-pane" role="tabpanel">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-wallet text-info me-1"></i> Digital Wallets</h6>
+                <div class="list-group list-group-flush border rounded-3 p-2">
+                  <label class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <input class="form-check-input me-2" type="radio" name="walletOpt" checked>
+                      <strong>Paytm Wallet</strong>
+                    </div>
+                    <span class="badge bg-light text-dark">Linked</span>
+                  </label>
+                  <label class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <input class="form-check-input me-2" type="radio" name="walletOpt">
+                      <strong>Amazon Pay Balance</strong>
+                    </div>
+                    <span class="badge bg-light text-dark">Available</span>
+                  </label>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MODAL FOOTER: PAY ACTION -->
+      <div id="paymentFooterState" class="modal-footer border-0 p-4 bg-white d-flex justify-content-between align-items-center">
+        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success btn-lg rounded-pill px-5 fw-bold shadow" id="payNowBtn" onclick="processSecurePayment()">
+          <i class="bi bi-lock-fill me-1"></i> Pay ₹{{ flight.base_price|floatformat:0 }} Securely
+        </button>
+      </div>
+
+      <!-- PROCESSING SPINNER VIEW -->
+      <div id="paymentProcessingState" class="p-5 text-center bg-white" style="display: none;">
+        <div class="spinner-border text-primary mb-4" style="width: 4rem; height: 4rem;" role="status">
+          <span class="visually-hidden">Processing...</span>
+        </div>
+        <h4 class="fw-bold text-dark mb-2">Processing Payment...</h4>
+        <p class="text-secondary small mb-3">Connecting to bank authentication gateway &amp; confirming your flight seat.</p>
+        <div class="progress rounded-pill mb-2 mx-auto" style="height: 6px; max-width: 320px;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary w-100"></div>
+        </div>
+        <small class="text-muted font-monospace">Please do not refresh or close this window.</small>
+      </div>
+
+      <!-- SUCCESS CONFIRMATION VIEW -->
+      <div id="paymentSuccessState" class="p-5 text-center bg-white" style="display: none;">
+        <div class="mb-3">
+          <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex align-items-center justify-content-center p-3" style="width: 80px; height: 80px;">
+            <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+          </div>
+        </div>
+        <h3 class="fw-bold text-dark mb-1">Payment Successful!</h3>
+        <p class="text-muted small mb-4">Your transaction is approved and your flight ticket has been issued.</p>
+
+        <!-- Receipt Card -->
+        <div class="p-3 mb-4 rounded-4 bg-light border text-start mx-auto" style="max-width: 440px;">
+          <div class="d-flex justify-content-between small text-secondary mb-1">
+            <span>Booking Reference (PNR):</span>
+            <strong id="successPnr" class="text-primary font-monospace fs-6">--</strong>
+          </div>
+          <div class="d-flex justify-content-between small text-secondary mb-1">
+            <span>Transaction Reference:</span>
+            <strong id="successTxnId" class="text-dark font-monospace">--</strong>
+          </div>
+          <div class="d-flex justify-content-between small text-secondary mb-1">
+            <span>Amount Paid:</span>
+            <strong id="successAmount" class="text-success font-monospace fs-6">₹{{ flight.base_price|floatformat:0 }}</strong>
+          </div>
+          <div class="d-flex justify-content-between small text-secondary">
+            <span>Assigned Seat:</span>
+            <strong id="successSeat" class="text-dark font-monospace">--</strong>
+          </div>
+        </div>
+
+        <div class="alert alert-success d-flex align-items-center justify-content-center gap-2 p-2 rounded-pill mb-4" style="font-size: 0.82rem;">
+          <i class="bi bi-bell-fill"></i>
+          <span>Redirecting to your Digital Boarding Pass in <strong id="redirectCountdown">2</strong> seconds...</span>
+        </div>
+
+        <div>
+          <a href="#" id="viewTicketNowBtn" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow">
+            <i class="bi bi-ticket-perforated-fill me-2"></i> View Boarding Pass Now
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  let selectedPaymentOption = 'UPI';
+
+  function selectSeat(seatNum) {
+    document.querySelectorAll('.seat-item.selected').forEach(el => {
+      el.classList.remove('selected');
+    });
+
+    const targetSeat = document.querySelector(`.seat-item[data-seat="${seatNum}"]`);
+    if (targetSeat && !targetSeat.classList.contains('booked')) {
+      targetSeat.classList.add('selected');
+      
+      document.getElementById('selected_seat_input').value = seatNum;
+      document.getElementById('seat_display_text').innerText = `Seat ${seatNum}`;
+      document.getElementById('seat_check_icon').style.display = 'block';
+      document.getElementById('confirm_btn').disabled = false;
+    }
+  }
+
+  function setPaymentMethod(method) {
+    selectedPaymentOption = method;
+    document.getElementById('payment_method_input').value = method;
+  }
+
+  function appendUpiHandle(handle) {
+    const input = document.getElementById('upiIdInput');
+    const parts = input.value.split('@');
+    input.value = parts[0] + handle;
+  }
+
+  function selectBank(btnElem, bankName) {
+    btnElem.closest('.row').querySelectorAll('button').forEach(b => {
+      b.classList.remove('active', 'border-primary', 'text-primary');
+    });
+    btnElem.classList.add('active', 'border-primary', 'text-primary');
+    setPaymentMethod(`Net Banking (${bankName})`);
+  }
+
+  function initiatePaymentGateway() {
+    const seatInput = document.getElementById('selected_seat_input').value;
+    const paxName = document.querySelector('input[name="passenger_name"]').value.trim();
+    const paxEmail = document.querySelector('input[name="passenger_email"]').value.trim();
+    const paxPhone = document.querySelector('input[name="passenger_phone"]').value.trim();
+
+    if (!seatInput) {
+      alert('Please select an available seat from the aircraft seat map.');
+      return;
+    }
+    if (!paxName || !paxEmail || !paxPhone) {
+      alert('Please fill in passenger name, email address, and phone number.');
+      return;
+    }
+
+    // Populate modal summary
+    document.getElementById('modalPaxName').innerText = paxName;
+    document.getElementById('modalSeatNum').innerText = seatInput;
+    document.getElementById('cardHolderInput').value = paxName.toUpperCase();
+
+    // Reset modal states
+    document.getElementById('paymentFormState').style.display = 'block';
+    document.getElementById('paymentFooterState').style.display = 'flex';
+    document.getElementById('paymentProcessingState').style.display = 'none';
+    document.getElementById('paymentSuccessState').style.display = 'none';
+    document.getElementById('modalCloseX').style.display = 'block';
+
+    const modal = new bootstrap.Modal(document.getElementById('flightPaymentModal'));
+    modal.show();
+  }
+
+  function processSecurePayment() {
+    // Generate transaction ID
+    const txnId = 'TXN_' + Date.now() + '_' + Math.floor(Math.random() * 9000 + 1000);
+    document.getElementById('transaction_id_input').value = txnId;
+
+    // Show processing state
+    document.getElementById('paymentFormState').style.display = 'none';
+    document.getElementById('paymentFooterState').style.display = 'none';
+    document.getElementById('modalCloseX').style.display = 'none';
+    document.getElementById('paymentProcessingState').style.display = 'block';
+
+    const form = document.getElementById('booking_form');
+    const formData = new FormData(form);
+
+    // Simulate bank authorization & submit AJAX
+    setTimeout(() => {
+      fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          // Show success screen
+          document.getElementById('paymentProcessingState').style.display = 'none';
+          document.getElementById('paymentSuccessState').style.display = 'block';
+
+          document.getElementById('successPnr').innerText = data.booking_reference;
+          document.getElementById('successTxnId').innerText = data.transaction_id || txnId;
+          document.getElementById('successSeat').innerText = data.seat_number;
+          document.getElementById('viewTicketNowBtn').href = data.redirect_url;
+
+          // Countdown and redirect
+          let countdown = 2;
+          const timer = setInterval(() => {
+            countdown -= 1;
+            const el = document.getElementById('redirectCountdown');
+            if (el) el.innerText = countdown;
+            if (countdown <= 0) {
+              clearInterval(timer);
+              window.location.href = data.redirect_url;
+            }
+          }, 1000);
+        } else {
+          alert('Error: ' + (data.message || 'Could not process booking.'));
+          document.getElementById('paymentProcessingState').style.display = 'none';
+          document.getElementById('paymentFormState').style.display = 'block';
+          document.getElementById('paymentFooterState').style.display = 'flex';
+          document.getElementById('modalCloseX').style.display = 'block';
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        // Fallback standard submit
+        form.submit();
+      });
+    }, 1200);
+  }
+</script>
+{% endblock %}

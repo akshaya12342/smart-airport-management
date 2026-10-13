@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+
+{% block title %}Seat Allocation Map - {{ flight.flight_number }} - Ground Staff{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-grid-3x3-gap-fill text-success me-2"></i> Seat Allocation &amp; Passenger Manifest: {{ flight.flight_number }}
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+
+  <!-- Navigation Bar -->
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <a href="{% url 'staff_flights' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to Flight Operations
+      </a>
+      <div class="d-flex gap-2">
+        <a href="{% url 'staff_counter_booking' %}?flight_id={{ flight.id }}" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 shadow-xs">
+          <i class="bi bi-person-plus-fill me-1"></i> Book Passenger on This Flight
+        </a>
+        <a href="{% url 'staff_boarding_manager' flight.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+          <i class="bi bi-people-fill me-1"></i> Boarding Console
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flight Summary Card -->
+  <div class="col-12">
+    <div class="card card-ops p-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #dcfce7 0%, #ecfeff 50%, #eff6ff 100%);">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-primary font-monospace fs-6">{{ flight.flight_number }}</span>
+            <span class="badge bg-white text-dark border">{{ flight.airline.name }}</span>
+            <span class="badge bg-light text-muted border">{{ flight.aircraft.model }} ({{ flight.aircraft.registration_number }})</span>
+          </div>
+          <h3 class="fw-bold text-dark mb-1">{{ flight.source_airport.city }} ({{ flight.source_airport.iata_code }}) → {{ flight.destination_airport.city }} ({{ flight.destination_airport.iata_code }})</h3>
+          <p class="text-secondary small mb-0">
+            Departure: <strong class="text-dark">{{ flight.scheduled_departure|date:"h:i A, d M Y" }}</strong> &bull;
+            Gate: <strong class="text-warning font-monospace">{{ flight.gate.gate_number|default:"TBD" }}</strong> ({{ flight.gate.terminal|default:"Terminal 1" }})
+          </p>
+        </div>
+
+        <div class="text-end">
+          <span class="badge badge-status {{ flight.status_css_class }} fs-6">
+            {{ flight.get_status_display }}
+          </span>
+          {% if flight.delay_minutes > 0 %}
+            <div class="text-warning small mt-1 fw-bold"><i class="bi bi-clock-history me-1"></i>+{{ flight.delay_minutes }} min Delay</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seat Allocation & Baggage KPI Strip -->
+  <div class="col-sm-6 col-md-3">
+    <div class="card card-ops p-3 border-0 shadow-sm text-center" style="background: #f0fdf4;">
+      <small class="text-secondary fw-bold text-uppercase" style="font-size: 0.72rem;">TOTAL CAPACITY</small>
+      <div class="fs-2 fw-bold text-success mt-1">{{ total_seats }}</div>
+      <small class="text-muted">Aircraft seats</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-3">
+    <div class="card card-ops p-3 border-0 shadow-sm text-center" style="background: #eff6ff;">
+      <small class="text-secondary fw-bold text-uppercase" style="font-size: 0.72rem;">BOOKED PASSENGERS</small>
+      <div class="fs-2 fw-bold text-primary mt-1">{{ booked_seats_count }}</div>
+      <small class="text-primary fw-semibold">{{ occupancy_pct }}% Occupancy</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-3">
+    <div class="card card-ops p-3 border-0 shadow-sm text-center" style="background: #fefce8;">
+      <small class="text-secondary fw-bold text-uppercase" style="font-size: 0.72rem;">AVAILABLE SEATS</small>
+      <div class="fs-2 fw-bold text-warning mt-1">{{ available_seats_count }}</div>
+      <small class="text-muted">Open for counter booking</small>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-3">
+    <div class="card card-ops p-3 border-0 shadow-sm text-center" style="background: #f5f3ff;">
+      <small class="text-secondary fw-bold text-uppercase" style="font-size: 0.72rem;">TOTAL BAGGAGE WEIGHT</small>
+      <div class="fs-2 fw-bold text-indigo mt-1" style="color: #6366f1;">{{ total_baggage_weight }} <span class="fs-6">kg</span></div>
+      <small class="text-muted">{{ heavy_baggage_count }} heavy items (&gt;15kg)</small>
+    </div>
+  </div>
+
+</div>
+
+<!-- 2D INTERACTIVE SEAT MAP -->
+<div class="card card-ops shadow-sm border-0 bg-white mb-4">
+  <div class="card-ops-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h5 class="fw-bold text-dark mb-0"><i class="bi bi-grid-3x3-gap text-success me-2"></i> 2D Aircraft Cabin Layout &amp; Seat Allocation</h5>
+      <small class="text-secondary">Click any seat for passenger dossier or book available seats</small>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-1 small"><span class="badge bg-success bg-opacity-25 text-success border border-success px-2 py-1">&nbsp;</span> Available</div>
+      <div class="d-flex align-items-center gap-1 small"><span class="badge bg-primary px-2 py-1">&nbsp;</span> Booked / Occupied</div>
+      <div class="d-flex align-items-center gap-1 small"><span class="badge bg-warning bg-opacity-25 text-warning border border-warning px-2 py-1">&nbsp;</span> Heavy Baggage (&gt;15kg)</div>
+    </div>
+  </div>
+
+  <div class="card-body p-4 overflow-auto">
+    <!-- Fuselage wrapper -->
+    <div class="d-flex justify-content-center">
+      <div class="p-4 rounded-4 border" style="background: #f8fafc; max-width: 900px; width: 100%;">
+        
+        <!-- Cockpit Icon -->
+        <div class="text-center mb-4 pb-3 border-bottom">
+          <i class="bi bi-airplane-engines-fill text-muted fs-3"></i>
+          <div class="text-uppercase fw-bold text-muted small mt-1" style="letter-spacing: 0.1em; font-size: 0.72rem;">Flight Deck / Cockpit</div>
+        </div>
+
+        <!-- Seat Grid Rows -->
+        <div class="d-flex flex-column gap-2">
+          {% for row_num, row_seats in seat_rows.items %}
+            <div class="d-flex align-items-center justify-content-center gap-2">
+              <span class="text-muted font-monospace small fw-bold" style="width: 25px;">{{ row_num }}</span>
+              
+              <div class="d-flex gap-2">
+                {% for s in row_seats %}
+                  {% if forloop.counter == 4 %}
+                    <!-- Aisle -->
+                    <div class="px-2 text-center text-muted small" style="width: 30px;"><i class="bi bi-arrow-down-up opacity-25"></i></div>
+                  {% endif %}
+
+                  {% if s.is_booked %}
+                    <!-- Booked Seat -->
+                    <div class="position-relative p-2 rounded-3 border text-center shadow-2xs" 
+                         style="width: 86px; min-height: 72px; {% if s.is_heavy_baggage %}background: #fffbeb; border-color: #fde68a !important;{% else %}background: #eff6ff; border-color: #bfdbfe !important;{% endif %}"
+                         data-bs-toggle="tooltip" data-bs-html="true" 
+                         title="<strong>{{ s.seat_number }}</strong>: {{ s.passenger_name }}<br>PNR: {{ s.booking_reference }}<br>Baggage: {{ s.baggage_weight }} kg">
+                      <strong class="d-block text-primary font-monospace" style="font-size: 0.85rem;">{{ s.seat_number }}</strong>
+                      <span class="d-block text-truncate text-dark fw-bold" style="font-size: 0.72rem; max-width: 72px;">{{ s.passenger_name }}</span>
+                      <div class="d-flex justify-content-center align-items-center gap-1 mt-1">
+                        <span class="badge {% if s.is_heavy_baggage %}bg-warning text-dark{% else %}bg-light text-muted border{% endif %}" style="font-size: 0.62rem;">
+                          <i class="bi bi-luggage"></i> {{ s.baggage_weight }}k
+                        </span>
+                        {% if s.boarding_status == 'BOARDED' %}
+                          <i class="bi bi-check-circle-fill text-success" style="font-size: 0.7rem;" title="Boarded"></i>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% else %}
+                    <!-- Available Seat -->
+                    <a href="{% url 'staff_counter_booking' %}?flight_id={{ flight.id }}&seat_number={{ s.seat_number }}" 
+                       class="p-2 rounded-3 border text-center text-decoration-none bg-white d-flex flex-column justify-content-between hover-lift shadow-2xs" 
+                       style="width: 86px; min-height: 72px; border-color: #cbd5e1 !important;"
+                       title="Click to book Seat {{ s.seat_number }}">
+                      <strong class="d-block text-success font-monospace" style="font-size: 0.85rem;">{{ s.seat_number }}</strong>
+                      <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size: 0.62rem;">Free</span>
+                      <small class="text-primary fw-semibold" style="font-size: 0.65rem;">+ Book</small>
+                    </a>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PASSENGER MANIFEST & BAGGAGE WEIGHT TABLE -->
+<div class="card card-ops shadow-sm border-0 bg-white">
+  <div class="card-ops-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h5 class="fw-bold text-dark mb-0"><i class="bi bi-people-fill text-success me-2"></i> Booked Passenger Manifest &amp; Baggage Scale Logs</h5>
+      <small class="text-secondary">{{ active_bookings|length }} passengers booked on flight {{ flight.flight_number }}</small>
+    </div>
+    <a href="{% url 'staff_ticket_verification' %}?flight_id={{ flight.id }}" class="btn btn-sm btn-outline-success rounded-pill fw-bold px-3">
+      <i class="bi bi-qr-code-scan me-1"></i> Verify Tickets
+    </a>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-ops mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Seat</th>
+            <th>Passenger Name &amp; Contact</th>
+            <th>Booking Ref (PNR)</th>
+            <th>Passport / ID</th>
+            <th>Baggage Weight (kg)</th>
+            <th>Baggage Tag</th>
+            <th>Boarding Status</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in active_bookings %}
+            {% with bag=b.baggage_items.first %}
+            <tr>
+              <td>
+                <span class="badge bg-primary font-monospace fs-6 px-3 py-1">{{ b.seat_number }}</span>
+              </td>
+
+              <td>
+                <strong class="text-dark d-block">{{ b.passenger_name }}</strong>
+                <small class="text-muted">{{ b.passenger_email }} &bull; {{ b.passenger_phone }}</small>
+              </td>
+
+              <td>
+                <span class="badge bg-light border text-primary font-monospace">{{ b.booking_reference }}</span>
+              </td>
+
+              <td>
+                <span class="font-monospace small text-dark">{{ b.passenger_id_passport|default:"--" }}</span>
+              </td>
+
+              <td>
+                {% if bag %}
+                  <div class="d-flex align-items-center gap-1">
+                    <i class="bi bi-luggage-fill {% if bag.weight_kg > 15 %}text-warning{% else %}text-primary{% endif %}"></i>
+                    <strong class="text-dark">{{ bag.weight_kg }} kg</strong>
+                    {% if bag.weight_kg > 15 %}
+                      <span class="badge bg-warning bg-opacity-25 text-warning border border-warning ms-1" style="font-size: 0.65rem;">Heavy</span>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <span class="text-muted small">No bags</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if bag %}
+                  <span class="badge bg-light border text-dark font-monospace" style="font-size: 0.72rem;">{{ bag.tag_number }}</span>
+                {% else %}
+                  <span class="text-muted small">--</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if b.boarding_record.boarding_status == 'BOARDED' %}
+                  <span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1 rounded-pill">
+                    <i class="bi bi-check-circle-fill me-1"></i>Boarded
+                  </span>
+                {% else %}
+                  <span class="badge bg-secondary bg-opacity-10 text-secondary border px-2 py-1 rounded-pill">
+                    Not Boarded
+                  </span>
+                {% endif %}
+              </td>
+
+              <td class="text-end pe-4">
+                <a href="{% url 'staff_ticket_verification' %}?q={{ b.booking_reference }}" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                  <i class="bi bi-shield-check me-1"></i> Verify Ticket
+                </a>
+                <a href="{% url 'booking_ticket' b.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-2" title="View Digital Ticket">
+                  <i class="bi bi-ticket-perforated"></i>
+                </a>
+              </td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr>
+              <td colspan="8" class="text-center py-5 text-muted">
+                <i class="bi bi-people display-4 d-block mb-2 text-secondary opacity-50"></i>
+                No passengers have booked on this flight yet.
+                <div class="mt-2">
+                  <a href="{% url 'staff_counter_booking' %}?flight_id={{ flight.id }}" class="btn btn-sm btn-primary rounded-pill px-3">
+                    <i class="bi bi-person-plus-fill me-1"></i> Book First Passenger
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

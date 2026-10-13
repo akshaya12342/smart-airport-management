@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Assign Staff to Flight Operations{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-person-plus-fill text-primary me-2"></i> Assign Staff to Flight Operations
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card card-ops shadow-lg">
+      <div class="card-ops-header d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0">Dispatch Staff to Flight Turnaround</h5>
+        <a href="{% url 'manager_staff' %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST">
+          {% csrf_token %}
+          
+          <div class="mb-3">
+            <label class="form-label text-dark small fw-bold">Select Ground Staff Member</label>
+            {{ form.staff }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-dark small fw-bold">Target Flight</label>
+            {{ form.flight }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-dark small fw-bold">Operational Role on Flight</label>
+            {{ form.role_in_flight }}
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label text-dark small fw-bold">Special Briefing Notes</label>
+            {{ form.notes }}
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+            <i class="bi bi-send-fill me-1"></i> Confirm Dispatch & Notify Staff
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

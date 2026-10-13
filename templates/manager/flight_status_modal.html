@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Update Flight Operational Status - {{ flight.flight_number }}{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-sliders text-primary me-2"></i> Update Operational Status: {{ flight.flight_number }}
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card card-ops shadow-lg">
+      <div class="card-ops-header d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="fw-bold text-dark mb-0">Flight {{ flight.flight_number }} ({{ flight.airline.name }})</h5>
+          <small class="text-secondary">{{ flight.source_airport.city }} → {{ flight.destination_airport.city }}</small>
+        </div>
+        <a href="{% url 'manager_flights' %}" class="btn btn-outline-secondary btn-sm">Back to Flights</a>
+      </div>
+
+      <div class="card-body p-4">
+        
+        <!-- Live Alert Notice -->
+        <div class="p-3 bg-light rounded border border-primary border-opacity-25 mb-4 small text-dark">
+          <i class="bi bi-broadcast text-primary me-1"></i>
+          <strong>Automatic Live Sync:</strong> Updating this flight's status, gate, or delay here immediately pushes notifications to all booked passengers and assigned ground staff, and updates AI predictive models in real-time.
+        </div>
+
+        <form method="POST">
+          {% csrf_token %}
+          
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Flight Operational Status</label>
+              <select name="status" class="form-select">
+                {% for val, label in status_choices %}
+                  <option value="{{ val }}" {% if flight.status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Assigned Departure Gate</label>
+              <select name="gate" class="form-select">
+                <option value="">Unassigned</option>
+                {% for g in gates %}
+                  <option value="{{ g.id }}" {% if flight.gate and flight.gate.id == g.id %}selected{% endif %}>
+                    {{ g.gate_number }} ({{ g.terminal }} - {{ g.get_gate_type_display }})
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3 p-3 bg-light rounded border border-warning">
+            <div class="col-12">
+              <h6 class="text-warning fw-bold small mb-2"><i class="bi bi-clock-history me-1"></i> Delay Control & Logging</h6>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Delay in Minutes (0 for On-Time)</label>
+              <input type="number" name="delay_minutes" value="{{ flight.delay_minutes }}" class="form-control" min="0" max="720">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-dark small fw-bold">Primary Delay Cause</label>
+              <select name="delay_reason" class="form-select">
+                <option value="">None / On Time</option>
+                {% for val, label in delay_reasons %}
+                  <option value="{{ val }}" {% if flight.delay_reason == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label text-dark small fw-bold">Flight Cancellation Reason (If cancelling)</label>
+            <textarea name="cancellation_reason" class="form-control" rows="2" placeholder="e.g. Operational Issue, Severe Weather Alert">{{ flight.cancellation_reason }}</textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+            <i class="bi bi-broadcast me-1"></i> Apply Operational Changes & Notify Passengers
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

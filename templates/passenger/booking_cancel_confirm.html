@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Cancel Booking - {{ booking.booking_reference }}{% endblock %}
+
+{% block header_title %}
+<div class="d-flex align-items-center gap-2">
+  <div class="p-2 bg-danger bg-opacity-10 text-danger rounded-circle">
+    <i class="bi bi-x-circle-fill fs-5"></i>
+  </div>
+  <div>
+    <h5 class="mb-0 text-dark fw-bold">Cancel Ticket & Release Seat</h5>
+    <small class="text-muted">Confirm cancellation for Booking Reference: {{ booking.booking_reference }}</small>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7 col-md-9">
+    
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+      <!-- Warning Header Bar -->
+      <div class="p-4 text-white d-flex align-items-center gap-3" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+        <div class="p-3 bg-white bg-opacity-20 rounded-circle text-white">
+          <i class="bi bi-exclamation-octagon fs-2"></i>
+        </div>
+        <div>
+          <h4 class="fw-bold mb-1">Confirm Cancellation</h4>
+          <p class="mb-0 small text-white text-opacity-75">
+            Are you sure you want to cancel this booking? This will immediately restore seat availability for other passengers.
+          </p>
+        </div>
+      </div>
+
+      <div class="card-body p-4 p-md-5">
+        
+        <!-- Flight Summary Box -->
+        <div class="p-3 bg-light rounded-3 border mb-4">
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+            <div>
+              <span class="text-muted small text-uppercase font-monospace">Flight</span>
+              <h5 class="fw-bold text-dark mb-0">{{ flight.airline.name }} &bull; {{ flight.flight_number }}</h5>
+            </div>
+            <div class="text-end">
+              <span class="text-muted small text-uppercase font-monospace">Booking Ref</span>
+              <h5 class="fw-bold text-primary font-monospace mb-0">{{ booking.booking_reference }}</h5>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-6">
+              <small class="text-muted d-block font-monospace" style="font-size: 0.72rem;">ROUTE</small>
+              <strong class="text-dark">{{ flight.source_airport.city }} ({{ flight.source_airport.iata_code }}) → {{ flight.destination_airport.city }} ({{ flight.destination_airport.iata_code }})</strong>
+            </div>
+            <div class="col-6">
+              <small class="text-muted d-block font-monospace" style="font-size: 0.72rem;">DEPARTURE DATE & TIME</small>
+              <strong class="text-dark">{{ flight.scheduled_departure|date:"d M Y, h:i A" }}</strong>
+            </div>
+            <div class="col-6">
+              <small class="text-muted d-block font-monospace" style="font-size: 0.72rem;">ASSIGNED SEAT</small>
+              <span class="badge bg-primary fs-6 px-3 py-1 font-monospace">{{ booking.seat_number }} ({{ booking.seat.get_seat_class_display|default:"Economy" }})</span>
+            </div>
+            <div class="col-6">
+              <small class="text-muted d-block font-monospace" style="font-size: 0.72rem;">REFUND ESTIMATE</small>
+              <strong class="text-success fs-6">₹{{ booking.ticket_price|floatformat:2 }} (100% Refundable)</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cancellation Terms Alert -->
+        <div class="alert alert-warning border-warning border-opacity-25 rounded-3 d-flex gap-3 align-items-start mb-4">
+          <i class="bi bi-info-circle-fill fs-5 text-warning flex-shrink-0 mt-1"></i>
+          <div class="small">
+            <strong>What happens when you cancel:</strong>
+            <ul class="mb-0 ps-3 mt-1">
+              <li>Seat <strong>{{ booking.seat_number }}</strong> will be instantly released and made available on the seat map.</li>
+              <li>Your digital boarding pass and check-in baggage tags will be invalidated.</li>
+              <li>Refund of <strong>₹{{ booking.ticket_price|floatformat:2 }}</strong> will be automatically credited to your original payment method.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Action Form -->
+        <form method="POST" action="{% url 'passenger_cancel_booking' booking.id %}">
+          {% csrf_token %}
+          <div class="d-flex justify-content-between align-items-center gap-3 pt-2">
+            <a href="{% url 'passenger_dashboard' %}" class="btn btn-outline-secondary px-4 py-2 rounded-pill fw-semibold">
+              <i class="bi bi-arrow-left me-1"></i> Keep Booking (Go Back)
+            </a>
+            <button type="submit" class="btn btn-danger px-4 py-2 rounded-pill fw-bold shadow-sm">
+              <i class="bi bi-trash3-fill me-1"></i> Confirm & Cancel Ticket
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

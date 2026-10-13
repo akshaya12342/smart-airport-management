@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+
+{% block title %}Passenger Counter Booking - Ground Staff{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-person-plus-fill text-primary me-2"></i> Ground Staff Counter Booking Desk
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+
+  <!-- Top Action Bar -->
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <a href="{% url 'staff_flights' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to Flight Operations
+      </a>
+      <div class="d-flex gap-2">
+        <a href="{% url 'staff_ticket_verification' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+          <i class="bi bi-shield-check me-1"></i> Ticket Verification Desk
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Booking Form & Seat Picker -->
+  <div class="col-12">
+    <div class="card card-ops border-0 shadow-sm p-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #eff6ff 100%);">
+      
+      <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary">
+          <i class="bi bi-ticket-perforated fs-2"></i>
+        </div>
+        <div>
+          <h4 class="fw-bold text-dark mb-1">Issue Walk-in Flight Ticket &amp; Baggage Tag</h4>
+          <p class="text-secondary small mb-0">Select an active scheduled flight, assign a seat, input scale baggage weight, and generate passenger boarding dossier.</p>
+        </div>
+      </div>
+
+      <!-- Step 1: Select Flight Form -->
+      <form method="GET" class="mb-4">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-9 col-12">
+            <label class="form-label fw-bold text-dark small"><i class="bi bi-airplane me-1"></i> Select Active Flight for Booking</label>
+            <select name="flight_id" class="form-select select-pill bg-white shadow-xs" onchange="this.form.submit()">
+              <option value="">-- Choose an Available Scheduled Flight --</option>
+              {% for fl in available_flights %}
+                <option value="{{ fl.id }}" {% if selected_flight and selected_flight.id == fl.id %}selected{% endif %}>
+                  {{ fl.flight_number }} &bull; {{ fl.airline.name }} &bull; {{ fl.source_airport.city }} ({{ fl.source_airport.iata_code }}) → {{ fl.destination_airport.city }} ({{ fl.destination_airport.iata_code }}) &bull; Dep: {{ fl.scheduled_departure|date:"h:i A, d M" }} &bull; Gate: {{ fl.gate.gate_number|default:"TBD" }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3 col-12">
+            <button type="submit" class="btn btn-outline-primary w-100 rounded-pill fw-bold">
+              <i class="bi bi-search me-1"></i> Load Flight Data
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {% if selected_flight %}
+        <!-- Selected Flight Banner -->
+        <div class="p-3 mb-4 rounded-4 border bg-white shadow-xs">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <span class="badge bg-primary font-monospace fs-6 me-2">{{ selected_flight.flight_number }}</span>
+              <span class="fw-bold text-dark fs-5">{{ selected_flight.source_airport.city }} ({{ selected_flight.source_airport.iata_code }}) → {{ selected_flight.destination_airport.city }} ({{ selected_flight.destination_airport.iata_code }})</span>
+            </div>
+            <div class="d-flex gap-3 text-secondary small">
+              <div><i class="bi bi-clock me-1 text-primary"></i> {{ selected_flight.scheduled_departure|date:"h:i A, d M Y" }}</div>
+              <div><i class="bi bi-door-open me-1 text-warning"></i> Gate: <strong class="text-dark font-monospace">{{ selected_flight.gate.gate_number|default:"TBD" }}</strong></div>
+              <div><i class="bi bi-tag me-1 text-success"></i> Fare: <strong class="text-success font-monospace">₹{{ selected_flight.base_price }}</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- POST Booking Form -->
+        <form method="POST" action="{% url 'staff_counter_booking' %}" id="staffBookingForm">
+          {% csrf_token %}
+          <input type="hidden" name="flight_id" value="{{ selected_flight.id }}">
+
+          <div class="row g-4">
+            
+            <!-- Left Column: Passenger & Baggage Details -->
+            <div class="col-lg-6 col-12">
+              <div class="card border rounded-4 p-4 bg-white shadow-xs h-100">
+                <h6 class="fw-bold text-dark mb-3 pb-2 border-bottom">
+                  <i class="bi bi-person-vcard text-primary me-2"></i> Passenger &amp; Identity Details
+                </h6>
+
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label small fw-bold text-secondary">Passenger Full Name <span class="text-danger">*</span></label>
+                    <input type="text" name="passenger_name" class="form-control rounded-pill" placeholder="e.g. Johnathan Doe" required>
+                  </div>
+
+                  <div class="col-md-6 col-12">
+                    <label class="form-label small fw-bold text-secondary">Email Address <span class="text-danger">*</span></label>
+                    <input type="email" name="passenger_email" class="form-control rounded-pill" placeholder="john@example.com" required>
+                  </div>
+
+                  <div class="col-md-6 col-12">
+                    <label class="form-label small fw-bold text-secondary">Phone Number <span class="text-danger">*</span></label>
+                    <input type="tel" name="passenger_phone" class="form-control rounded-pill" placeholder="+91 9876543210" required>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label small fw-bold text-secondary">Passport / National ID Number <span class="text-danger">*</span></label>
+                    <input type="text" name="passenger_id_passport" class="form-control rounded-pill font-monospace" placeholder="e.g. IND78965412" required>
+                  </div>
+
+                  <div class="col-12 mt-4 pt-2 border-top">
+                    <h6 class="fw-bold text-dark mb-3">
+                      <i class="bi bi-bag-check-fill text-warning me-2"></i> Baggage Scale Weighing
+                    </h6>
+                  </div>
+
+                  <div class="col-md-7 col-12">
+                    <label class="form-label small fw-bold text-secondary">Recorded Baggage Scale Weight (kg) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                      <input type="number" step="0.1" min="1.0" max="60.0" name="baggage_weight" id="baggageWeightInput" class="form-control rounded-start-pill font-monospace fw-bold fs-5 text-dark" value="14.5" required oninput="checkBaggageWeight(this.value)">
+                      <span class="input-group-text rounded-end-pill bg-light fw-bold text-secondary">kg</span>
+                    </div>
+                  </div>
+
+                  <div class="col-md-5 col-12 d-flex align-items-center mt-md-4">
+                    <div id="baggageAlert" class="badge bg-success-subtle text-success border border-success-subtle p-2 w-100 text-center">
+                      <i class="bi bi-check-circle me-1"></i> Standard Cabin/Check-in
+                    </div>
+                  </div>
+
+                  <div class="col-12">
+                    <div class="form-check form-switch mt-1">
+                      <input class="form-check-input" type="checkbox" name="special_handling" id="specialHandlingSwitch">
+                      <label class="form-check-label small fw-bold text-secondary" for="specialHandlingSwitch">
+                        Mark as Fragile / Special Priority Handling
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="col-12">
+                    <label class="form-label small fw-bold text-secondary">Selected Seat Number <span class="text-danger">*</span></label>
+                    <input type="text" name="seat_number" id="selectedSeatInput" class="form-control rounded-pill font-monospace fw-bold fs-5 text-primary text-center bg-light" value="{{ preselected_seat }}" placeholder="Click a seat on map →" readonly required>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Interactive Seat Selector Map -->
+            <div class="col-lg-6 col-12">
+              <div class="card border rounded-4 p-4 bg-white shadow-xs h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                  <h6 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-grid-3x3 text-success me-2"></i> Interactive Cabin Seat Picker
+                  </h6>
+                  <span class="badge bg-light text-muted border small">Aircraft: {{ selected_flight.aircraft.model }}</span>
+                </div>
+
+                <!-- Seat Legend -->
+                <div class="d-flex flex-wrap gap-3 p-2 mb-3 bg-light rounded-3 text-secondary small justify-content-center">
+                  <div class="d-flex align-items-center gap-1">
+                    <div style="width: 16px; height: 16px; border-radius: 4px; background: #ffffff; border: 2px solid #22c55e;"></div>
+                    <span>Available</span>
+                  </div>
+                  <div class="d-flex align-items-center gap-1">
+                    <div style="width: 16px; height: 16px; border-radius: 4px; background: #3b82f6; border: 2px solid #2563eb;"></div>
+                    <span>Selected</span>
+                  </div>
+                  <div class="d-flex align-items-center gap-1">
+                    <div style="width: 16px; height: 16px; border-radius: 4px; background: #fee2e2; border: 1px solid #f87171;"></div>
+                    <span>Booked / Occupied</span>
+                  </div>
+                </div>
+
+                <!-- Scrollable Seat Grid Container -->
+                <div class="seat-picker-container p-3 border rounded-3 text-center" style="max-height: 380px; overflow-y: auto; background-color: #f8fafc;">
+                  <div class="text-muted small fw-bold mb-2">FRONT OF AIRCRAFT (COCKPIT)</div>
+                  
+                  <div class="d-inline-flex flex-column gap-2">
+                    {% for row_num, seats in seat_rows.items %}
+                      <div class="d-flex align-items-center gap-2 justify-content-center">
+                        <span class="text-muted small font-monospace" style="width: 24px;">{{ row_num }}</span>
+                        
+                        {% for s in seats %}
+                          {% if forloop.counter == 4 %}
+                            <!-- Aisle Space -->
+                            <div style="width: 20px;"></div>
+                          {% endif %}
+                          
+                          {% if s.is_booked %}
+                            <button type="button" class="btn btn-sm btn-danger p-0 d-flex align-items-center justify-content-center font-monospace disabled opacity-50" style="width: 34px; height: 34px; font-size: 0.75rem;" title="Seat {{ s.seat_number }} (Occupied)">
+                              {{ s.seat_number|slice:"-1:" }}
+                            </button>
+                          {% else %}
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-success seat-btn p-0 d-flex align-items-center justify-content-center font-monospace fw-bold {% if preselected_seat == s.seat_number %}btn-primary text-white active-seat{% endif %}" 
+                                    style="width: 34px; height: 34px; font-size: 0.75rem;"
+                                    data-seat="{{ s.seat_number }}"
+                                    onclick="selectSeat('{{ s.seat_number }}', this)">
+                              {{ s.seat_number|slice:"-1:" }}
+                            </button>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                <!-- Confirmation Button -->
+                <div class="mt-4 pt-2">
+                  <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow-sm">
+                    <i class="bi bi-check2-circle me-2"></i> Issue Walk-In Ticket &amp; Check In
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </form>
+      {% else %}
+        <div class="p-5 text-center bg-white rounded-4 border">
+          <i class="bi bi-airplane-engines text-muted fs-1 mb-2"></i>
+          <h5 class="fw-bold text-dark">No Flight Selected</h5>
+          <p class="text-secondary small mb-0">Please select an available flight from the dropdown above to load the seat layout and open the booking counter.</p>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function selectSeat(seatNum, btnElem) {
+  document.getElementById('selectedSeatInput').value = seatNum;
+  document.querySelectorAll('.seat-btn').forEach(btn => {
+    btn.classList.remove('btn-primary', 'text-white', 'active-seat');
+    btn.classList.add('btn-outline-success');
+  });
+  btnElem.classList.remove('btn-outline-success');
+  btnElem.classList.add('btn-primary', 'text-white', 'active-seat');
+}
+
+function checkBaggageWeight(val) {
+  const weight = parseFloat(val) || 0;
+  const alertBadge = document.getElementById('baggageAlert');
+  if (weight > 15.0) {
+    alertBadge.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle p-2 w-100 text-center';
+    alertBadge.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> Heavy Baggage (>15 kg)';
+  } else {
+    alertBadge.className = 'badge bg-success-subtle text-success border border-success-subtle p-2 w-100 text-center';
+    alertBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i> Standard Cabin/Check-in';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const weightInput = document.getElementById('baggageWeightInput');
+  if (weightInput) {
+    checkBaggageWeight(weightInput.value);
+  }
+});
+</script>
+{% endblock %}

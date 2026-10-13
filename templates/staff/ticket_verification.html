@@ -1,0 +1,317 @@
+{% extends 'base.html' %}
+
+{% block title %}Ticket Verification & Boarding Advancement - Ground Staff{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-shield-check text-primary me-2"></i> Passenger Ticket Verification &amp; Boarding Desk
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+
+  <!-- Top Actions -->
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <a href="{% url 'staff_flights' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to Flight Operations
+      </a>
+      <div class="d-flex gap-2">
+        <a href="{% url 'staff_counter_booking' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+          <i class="bi bi-person-plus-fill me-1"></i> Counter Booking Desk
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Ticket / PNR Box -->
+  <div class="col-12">
+    <div class="card card-ops border-0 shadow-sm p-4" style="background: linear-gradient(135deg, #e0f2fe 0%, #ffffff 50%, #f0fdf4 100%);">
+      <div class="row align-items-center g-3">
+        <div class="col-lg-7 col-12">
+          <h4 class="fw-bold text-dark mb-1">
+            <i class="bi bi-qr-code-scan text-primary me-2"></i> Inspect Ticket &amp; Advance Passenger
+          </h4>
+          <p class="text-secondary small mb-0">Enter the Booking PNR, Passenger Name, Seat Number, or Baggage Tag to verify credentials, check baggage weight, and advance to next level.</p>
+        </div>
+        <div class="col-lg-5 col-12">
+          <form method="GET" class="d-flex gap-2">
+            <div class="input-group">
+              <span class="input-group-text bg-white border-end-0 rounded-start-pill text-muted ps-3">
+                <i class="bi bi-search"></i>
+              </span>
+              <input type="text" name="q" class="form-control border-start-0 font-monospace" placeholder="Enter PNR, Name, Seat (e.g. 12A)..." value="{{ search_query }}" required>
+              <button class="btn btn-primary rounded-end-pill px-4 fw-bold" type="submit">Verify</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if booking %}
+    <!-- Ticket & Verification Dossier -->
+    <div class="col-12">
+      <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+        
+        <!-- Header Strip -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-3 border-bottom mb-4">
+          <div>
+            <span class="badge bg-primary fs-6 font-monospace me-2">{{ booking.booking_reference }}</span>
+            <span class="badge {% if booking.status == 'BOARDED' %}bg-success{% elif booking.status == 'CHECKED_IN' %}bg-info text-dark{% else %}bg-secondary{% endif %} fs-6">
+              {{ booking.get_status_display }}
+            </span>
+          </div>
+          <div class="text-secondary small">
+            Booked via: <strong class="text-dark">{{ booking.get_booking_channel_display }}</strong> &bull;
+            Created: {{ booking.created_at|date:"d M Y, h:i A" }}
+          </div>
+        </div>
+
+        <!-- 3-Level Verification Progress Ladder -->
+        <div class="p-3 mb-4 rounded-4 bg-light border">
+          <h6 class="fw-bold text-dark small mb-3 text-uppercase tracking-wider">
+            <i class="bi bi-bezier2 text-primary me-1"></i> Multi-Stage Verification Pipeline
+          </h6>
+          
+          <div class="row text-center g-2 position-relative">
+            <!-- Level 1: Ticket Confirmed -->
+            <div class="col-4">
+              <div class="p-2 rounded-3 bg-success-subtle text-success border border-success-subtle">
+                <div class="fw-bold fs-6"><i class="bi bi-check-circle-fill me-1"></i> Level 1</div>
+                <div class="small fw-semibold">Ticket Authenticated</div>
+                <div class="text-muted" style="font-size: 0.75rem;">Valid PNR &amp; Fare Confirmed</div>
+              </div>
+            </div>
+
+            <!-- Level 2: Baggage & ID -->
+            <div class="col-4">
+              <div class="p-2 rounded-3 {% if baggage_info %}bg-success-subtle text-success border border-success-subtle{% else %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% endif %}">
+                <div class="fw-bold fs-6">
+                  {% if baggage_info %}<i class="bi bi-check-circle-fill me-1"></i>{% else %}<i class="bi bi-clock-history me-1"></i>{% endif %}
+                  Level 2
+                </div>
+                <div class="small fw-semibold">ID &amp; Baggage Checked</div>
+                <div class="text-muted" style="font-size: 0.75rem;">
+                  {% if baggage_info %}Weight: {{ baggage_info.weight_kg }} kg Verified{% else %}Awaiting Scale Check{% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Level 3: Boarded -->
+            <div class="col-4">
+              <div class="p-2 rounded-3 {% if booking.status == 'BOARDED' %}bg-success-subtle text-success border border-success-subtle{% else %}bg-secondary-subtle text-secondary border border-secondary-subtle{% endif %}">
+                <div class="fw-bold fs-6">
+                  {% if booking.status == 'BOARDED' %}<i class="bi bi-check-circle-fill me-1"></i> Level 3: Boarded{% else %}<i class="bi bi-arrow-right-circle me-1"></i> Level 3: Ready{% endif %}
+                </div>
+                <div class="small fw-semibold">Gate Boarding Scan</div>
+                <div class="text-muted" style="font-size: 0.75rem;">
+                  {% if booking.status == 'BOARDED' %}Boarded at Gate {{ booking.flight.gate.gate_number|default:"" }}{% else %}Action Required Below{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <!-- Passenger & Flight Details -->
+          <div class="col-lg-6 col-12">
+            <div class="p-3 border rounded-3 bg-light h-100">
+              <h6 class="fw-bold text-dark mb-3 pb-2 border-bottom">
+                <i class="bi bi-person-bounding-box text-primary me-2"></i> Passenger &amp; Journey Dossier
+              </h6>
+              
+              <div class="row g-2 small">
+                <div class="col-5 text-secondary">Passenger Name:</div>
+                <div class="col-7 fw-bold text-dark fs-6">{{ booking.passenger_name }}</div>
+
+                <div class="col-5 text-secondary">Passport / Gov ID:</div>
+                <div class="col-7 font-monospace fw-bold text-dark">{{ booking.passenger_id_passport|default:"Not Provided" }}</div>
+
+                <div class="col-5 text-secondary">Contact Email:</div>
+                <div class="col-7 text-dark">{{ booking.passenger_email }}</div>
+
+                <div class="col-5 text-secondary">Contact Phone:</div>
+                <div class="col-7 text-dark">{{ booking.passenger_phone }}</div>
+
+                <div class="col-12 my-2"><hr class="my-1"></div>
+
+                <div class="col-5 text-secondary">Flight Number:</div>
+                <div class="col-7 fw-bold font-monospace text-primary fs-6">{{ booking.flight.flight_number }} ({{ booking.flight.airline.name }})</div>
+
+                <div class="col-5 text-secondary">Route:</div>
+                <div class="col-7 fw-bold text-dark">{{ booking.flight.source_airport.city }} ({{ booking.flight.source_airport.iata_code }}) → {{ booking.flight.destination_airport.city }} ({{ booking.flight.destination_airport.iata_code }})</div>
+
+                <div class="col-5 text-secondary">Allocated Seat:</div>
+                <div class="col-7">
+                  <span class="badge bg-primary fs-6 font-monospace px-3 py-1">{{ booking.seat_number }}</span>
+                  <a href="{% url 'staff_flight_seats' booking.flight.id %}" class="btn btn-link btn-sm text-decoration-none p-0 ms-2" target="_blank">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> View Seat Map
+                  </a>
+                </div>
+
+                <div class="col-5 text-secondary">Gate Allocation:</div>
+                <div class="col-7">
+                  {% if booking.flight.gate %}
+                    <span class="badge bg-warning text-dark font-monospace fw-bold fs-6">Gate {{ booking.flight.gate.gate_number }}</span>
+                    <span class="text-secondary ms-1">({{ booking.flight.gate.terminal }})</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Unassigned</span>
+                  {% endif %}
+                </div>
+
+                <div class="col-5 text-secondary">Flight Status:</div>
+                <div class="col-7">
+                  <span class="badge badge-status {{ booking.flight.status_css_class }}">
+                    {{ booking.flight.get_status_display }}
+                  </span>
+                  {% if booking.flight.delay_minutes > 0 %}
+                    <div class="text-danger small mt-1 fw-bold">
+                      <i class="bi bi-clock-history me-1"></i> Delayed by {{ booking.flight.delay_minutes }}m ({{ booking.flight.get_delay_reason_display|default:booking.flight.delay_reason }})
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Baggage Check & Level 3 Advancement -->
+          <div class="col-lg-6 col-12">
+            <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-column justify-content-between">
+              
+              <div>
+                <h6 class="fw-bold text-dark mb-3 pb-2 border-bottom">
+                  <i class="bi bi-luggage text-warning me-2"></i> Baggage Weight Verification &amp; Scale
+                </h6>
+
+                {% if baggage_info %}
+                  <div class="card p-3 border mb-3 bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="badge bg-secondary font-monospace">Tag: {{ baggage_info.tag_number }}</span>
+                      <span class="badge {% if baggage_info.status == 'LOADED' %}bg-success{% else %}bg-primary{% endif %}">{{ baggage_info.get_status_display }}</span>
+                    </div>
+
+                    <div class="row align-items-center g-2 my-1">
+                      <div class="col-6">
+                        <div class="text-secondary small">Registered Scale Weight:</div>
+                        <div class="fs-4 fw-bold font-monospace text-dark">{{ baggage_info.weight_kg }} kg</div>
+                      </div>
+                      <div class="col-6 text-end">
+                        {% if baggage_info.weight_kg > 15.0 %}
+                          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning p-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Heavy (>15 kg)
+                          </span>
+                        {% else %}
+                          <span class="badge bg-success-subtle text-success border border-success p-2">
+                            <i class="bi bi-check2 me-1"></i> Standard Weight
+                          </span>
+                        {% endif %}
+                      </div>
+                    </div>
+
+                    <!-- Inline Weight Adjustment Form -->
+                    <form method="POST" class="mt-2 pt-2 border-top">
+                      {% csrf_token %}
+                      <input type="hidden" name="q" value="{{ booking.booking_reference }}">
+                      <input type="hidden" name="action" value="update_baggage_weight">
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light">Re-weigh (kg):</span>
+                        <input type="number" step="0.1" name="baggage_weight" value="{{ baggage_info.weight_kg }}" class="form-control font-monospace fw-bold" required>
+                        <button type="submit" class="btn btn-outline-secondary fw-bold">Update Scale</button>
+                      </div>
+                    </form>
+                  </div>
+                {% else %}
+                  <div class="alert alert-warning small mb-3">
+                    <i class="bi bi-exclamation-circle me-1"></i> No baggage registered for this booking yet.
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Advancement Action Button -->
+              <div class="mt-3 pt-3 border-top">
+                {% if booking.status == 'BOARDED' %}
+                  <div class="alert alert-success d-flex align-items-center mb-0 p-3 rounded-3">
+                    <i class="bi bi-check-circle-fill fs-3 me-3 text-success"></i>
+                    <div>
+                      <h6 class="fw-bold mb-0">Passenger Already Boarded</h6>
+                      <small class="text-muted">Passenger has completed all verification levels and is onboard the aircraft.</small>
+                    </div>
+                  </div>
+                {% else %}
+                  <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="q" value="{{ booking.booking_reference }}">
+                    <input type="hidden" name="action" value="advance_boarded">
+                    <button type="submit" class="btn btn-success btn-lg w-100 rounded-pill fw-bold shadow-sm">
+                      <i class="bi bi-check2-all me-2"></i> Verify Credentials &amp; Mark as BOARDED
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  {% elif search_query %}
+    <!-- Not Found State -->
+    <div class="col-12">
+      <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+        <i class="bi bi-search text-warning fs-1 mb-2"></i>
+        <h5 class="fw-bold text-dark">No Booking Found for "{{ search_query }}"</h5>
+        <p class="text-secondary small mb-0">Please double check the PNR, passenger name, seat number, or baggage tag and try again.</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Recent Boarded Passengers Table -->
+  <div class="col-12">
+    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold text-dark mb-0">
+          <i class="bi bi-clock-history text-secondary me-2"></i> Recently Boarded Manifest (Live Verification Feed)
+        </h6>
+        <span class="badge bg-light text-muted border small">{{ recent_boardings|length }} recent</span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 font-sans" style="font-size: 0.85rem;">
+          <thead class="table-light">
+            <tr>
+              <th>Passenger Name</th>
+              <th>PNR</th>
+              <th>Flight</th>
+              <th>Seat</th>
+              <th>Gate</th>
+              <th>Boarded Time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rec in recent_boardings %}
+              <tr>
+                <td class="fw-bold text-dark">{{ rec.booking.passenger_name }}</td>
+                <td><span class="badge bg-light text-dark border font-monospace">{{ rec.booking.booking_reference }}</span></td>
+                <td><span class="badge bg-primary font-monospace">{{ rec.flight.flight_number }}</span></td>
+                <td><span class="badge bg-info text-dark font-monospace fw-bold">{{ rec.booking.seat_number }}</span></td>
+                <td><span class="badge bg-warning text-dark font-monospace">{{ rec.flight.gate.gate_number|default:"TBD" }}</span></td>
+                <td class="text-secondary">{{ rec.boarding_time|date:"h:i:s A" }}</td>
+                <td><span class="badge bg-success"><i class="bi bi-check2 me-1"></i> Boarded</span></td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-3">No passengers boarded recently in this shift.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

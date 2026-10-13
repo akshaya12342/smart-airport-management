@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications & Travel Alerts{% endblock %}
+
+{% block header_title %}
+<h5 class="mb-0 text-dark fw-bold">
+  <i class="bi bi-bell-fill text-primary me-2"></i> Notifications & Operational Alerts
+</h5>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="fw-bold text-dark mb-1">Your Operational Notifications</h4>
+        <p class="text-muted small mb-0">Live flight delays, gate changes, baggage tracking alerts, and shift assignments</p>
+      </div>
+      <div>
+        <a href="{% url 'mark_all_notifications_read' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+          <i class="bi bi-check2-all me-1"></i> Mark All as Read
+        </a>
+      </div>
+    </div>
+
+    <div class="card card-ops border-0 shadow-sm bg-white">
+      <div class="card-body p-0">
+        {% if notifications %}
+          <div class="list-group list-group-flush bg-transparent">
+            {% for n in notifications %}
+              <div class="list-group-item border-bottom p-3 d-flex justify-content-between align-items-start {% if not n.is_read %}bg-primary bg-opacity-10 border-start border-4 border-primary{% endif %}">
+                <div class="d-flex align-items-start gap-3">
+                  <div class="mt-1">
+                    {% if n.category == 'FLIGHT_DELAY' %}
+                      <span class="badge bg-warning bg-opacity-25 text-warning p-2 fs-6"><i class="bi bi-clock-history"></i></span>
+                    {% elif n.category == 'GATE_CHANGE' %}
+                      <span class="badge bg-info bg-opacity-25 text-info p-2 fs-6"><i class="bi bi-door-open"></i></span>
+                    {% elif n.category == 'BOARDING' %}
+                      <span class="badge bg-primary bg-opacity-25 text-primary p-2 fs-6"><i class="bi bi-person-walking"></i></span>
+                    {% elif n.category == 'BAGGAGE' %}
+                      <span class="badge bg-secondary bg-opacity-25 text-secondary p-2 fs-6"><i class="bi bi-luggage"></i></span>
+                    {% elif n.category == 'AI_ALERT' %}
+                      <span class="badge bg-danger bg-opacity-25 text-danger p-2 fs-6"><i class="bi bi-cpu"></i></span>
+                    {% elif n.category == 'STAFF_ASSIGNMENT' %}
+                      <span class="badge bg-success bg-opacity-25 text-success p-2 fs-6"><i class="bi bi-clipboard-check"></i></span>
+                    {% else %}
+                      <span class="badge bg-light text-dark p-2 fs-6 border"><i class="bi bi-bell"></i></span>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <div class="d-flex align-items-center gap-2">
+                      <strong class="text-dark">{{ n.title }}</strong>
+                      <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">{{ n.get_category_display }}</span>
+                      {% if not n.is_read %}
+                        <span class="badge bg-primary text-white" style="font-size: 0.62rem;">NEW</span>
+                      {% endif %}
+                    </div>
+                    <p class="text-secondary mb-1 mt-1 small">{{ n.message }}</p>
+                    <small class="text-muted font-monospace" style="font-size: 0.72rem;">
+                      <i class="bi bi-calendar-event me-1"></i> {{ n.created_at|date:"d M Y, H:i" }} ({{ n.created_at|timesince }} ago)
+                    </small>
+                  </div>
+                </div>
+
+                {% if not n.is_read %}
+                  <a href="{% url 'mark_notification_read' n.id %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-check"></i> Mark read
+                  </a>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-bell-slash fs-1 d-block mb-3 text-secondary"></i>
+            <h5 class="text-dark">No notifications yet</h5>
+            <p class="small">You will receive live flight, gate, and baggage updates here.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

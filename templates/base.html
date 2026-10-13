@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Aero Ground · NextGen Airport Operations{% endblock %}</title>
+
+  <!-- Bootstrap 5 CSS + Icons + Fonts -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+  <!-- Project theme (loaded first so the layout below can override it) -->
+  <link href="/static/css/airport-theme.css" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  {% block extra_head %}{% endblock %}
+
+  <style>
+    /* =====================================================
+       DESIGN TOKENS
+       Navy sidebar = airport signage. Amber = the one accent.
+       ===================================================== */
+    :root {
+      --ink:        #0e1a2b;
+      --ink-2:      #15243a;
+      --ink-3:      #1f3452;
+      --signal:     #f5b301;   /* amber accent: active nav, key highlights */
+      --brand:      #1f6feb;   /* actions / links */
+      --brand-soft: #e8f0fe;
+
+      --page:       #edf1f7;   /* tinted canvas so white cards visibly float */
+      --surface:    #ffffff;
+      --line:       #e2e8f0;
+      --text:       #1a2434;
+      --muted:      #66758a;
+
+      --ok:         #12805c;  --ok-soft:    #e3f5ee;
+      --warn:       #b7791f;  --warn-soft:  #fdf3dc;
+      --alert:      #c53a3a;  --alert-soft: #fbe9e9;
+      --info:       #1f6feb;  --info-soft:  #e8f0fe;
+
+      --r-sm: 10px;
+      --r-md: 14px;
+      --r-lg: 18px;
+
+      /* Floating elevation: contact shadow + ambient + deep lift */
+      --float-1: 0 1px 2px rgba(14,26,43,.06),
+                 0 6px 16px -4px rgba(14,26,43,.10),
+                 0 18px 36px -14px rgba(14,26,43,.12);
+      --float-2: 0 2px 4px rgba(14,26,43,.06),
+                 0 14px 28px -6px rgba(14,26,43,.16),
+                 0 30px 56px -20px rgba(31,111,235,.22);
+
+      --sidebar-w: 272px;
+      --topbar-h: 68px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 0.925rem;
+      color: var(--text);
+      background: var(--page);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1,h2,h3,h4,h5,h6 { letter-spacing: -0.01em; }
+    .tabular, .font-monospace { font-variant-numeric: tabular-nums; }
+    .font-monospace { font-family: 'JetBrains Mono', ui-monospace, monospace !important; }
+
+    :focus-visible { outline: 3px solid rgba(31,111,235,.45); outline-offset: 2px; border-radius: 6px; }
+
+    /* =====================================================
+       APP SHELL
+       ===================================================== */
+    .app-wrapper { display: flex; min-height: 100vh; }
+    .app-main    { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+    /* ---------- SIDEBAR ---------- */
+    /* =====================================================
+       ENHANCED SIDEBAR DESIGN (PASTEL LIGHT AESTHETIC)
+       ===================================================== */
+    .sidebar {
+      --bs-offcanvas-width: var(--sidebar-w);
+      --bs-offcanvas-bg: #ffffff;
+      --bs-offcanvas-color: #334155;
+      background: #ffffff;
+      color: #334155;
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      border-right: 1px solid #e2e8f0;
+      box-shadow: 2px 0 16px rgba(15, 23, 42, 0.03);
+    }
+    @media (min-width: 992px) {
+      .sidebar { position: sticky; top: 0; height: 100vh; }
+    }
+    .sidebar .sidebar-inner {
+      display: flex; flex-direction: column; height: 100%;
+      padding: 1.25rem 0.95rem 1rem;
+      overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent;
+    }
+
+    /* Brand Header */
+    .brand-new {
+      display: flex; align-items: center; gap: 0.75rem;
+      text-decoration: none; padding: 0.25rem 0.25rem 0.75rem;
+    }
+    .brand-icon-box {
+      width: 42px; height: 42px; border-radius: 12px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+      color: #ffffff; font-size: 1.25rem;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
+      flex-shrink: 0;
+    }
+    .brand-title {
+      display: block; color: #0f172a; font-weight: 800;
+      font-size: 1.1rem; line-height: 1.15; letter-spacing: -0.02em;
+    }
+    .brand-subtitle {
+      display: flex; align-items: center; gap: 0.35rem;
+      color: #64748b; font-size: 0.74rem; font-weight: 600; margin-top: 2px;
+    }
+    .status-indicator-live {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+    }
+
+    /* Persona Card */
+    .sidebar-persona-card {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.75rem 0.85rem;
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+      border: 1px solid #bae6fd;
+      border-radius: 14px;
+      box-shadow: 0 2px 6px rgba(14, 165, 233, 0.06);
+      transition: all 0.2s ease;
+    }
+    body.portal-staff .sidebar-persona-card {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border-color: #bbf7d0;
+    }
+    body.portal-manager .sidebar-persona-card {
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+      border-color: #ddd6fe;
+    }
+    .persona-avatar-wrap {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: #ffffff; color: #0284c7; font-size: 1.15rem;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.15);
+      flex-shrink: 0;
+    }
+    body.portal-staff .persona-avatar-wrap { color: #15803d; }
+    body.portal-manager .persona-avatar-wrap { color: #5b21b6; }
+    .persona-info { min-width: 0; flex: 1; }
+    .persona-info .persona-name {
+      color: #0f172a; font-weight: 700; font-size: 0.88rem; line-height: 1.2;
+    }
+    .persona-badge-role { margin-top: 2px; }
+    .badge-role {
+      font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+    }
+    .badge-role.passenger { background: rgba(3, 105, 161, 0.1); color: #0369a1; border: 1px solid rgba(3, 105, 161, 0.25); }
+    .badge-role.staff { background: rgba(21, 128, 61, 0.1); color: #15803d; border: 1px solid rgba(21, 128, 61, 0.25); }
+    .badge-role.manager { background: rgba(91, 33, 182, 0.1); color: #5b21b6; border: 1px solid rgba(91, 33, 182, 0.25); }
+
+    /* Section Headers */
+    .nav-section-label {
+      color: #94a3b8; font-size: 0.72rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      padding: 0.85rem 0.6rem 0.35rem; margin: 0;
+    }
+
+    /* Links */
+    .sidebar .nav-link,
+    .sidebar-link {
+      position: relative;
+      display: flex; align-items: center; gap: 0.75rem;
+      color: #475569; font-weight: 600; font-size: 0.88rem;
+      padding: 0.55rem 0.75rem; margin: 2px 0;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      border: 1px solid transparent;
+    }
+    .sidebar .nav-link .link-icon,
+    .sidebar-link .link-icon {
+      width: 32px; height: 32px; border-radius: 9px;
+      display: inline-grid; place-items: center;
+      background: #f1f5f9; color: #64748b; font-size: 1rem;
+      transition: all 0.2s ease; flex-shrink: 0;
+    }
+    .sidebar .nav-link:hover,
+    .sidebar-link:hover {
+      background: #f8fafc; color: #1e40af; border-color: #e2e8f0;
+      transform: translateX(3px);
+    }
+    .sidebar .nav-link:hover .link-icon,
+    .sidebar-link:hover .link-icon {
+      background: #e0f2fe; color: #0284c7;
+    }
+    .sidebar .nav-link.active,
+    .sidebar-link.active {
+      background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+      color: #1d4ed8 !important; font-weight: 700;
+      border: 1px solid #bfdbfe;
+      box-shadow: 0 3px 10px rgba(37, 99, 235, 0.10);
+    }
+    .sidebar .nav-link.active .link-icon,
+    .sidebar-link.active .link-icon {
+      background: #2563eb; color: #ffffff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+    }
+    .sidebar .nav-link.active::before,
+    .sidebar-link.active::before {
+      content: none;
+    }
+    .sidebar .nav-link .badge,
+    .sidebar-link .badge { margin-left: auto; }
+
+    /* Sidebar Footer Button */
+    .sidebar-foot,
+    .sidebar-footer-new {
+      margin-top: auto; padding-top: 0.85rem; border-top: 1px solid #f1f5f9;
+    }
+    .sidebar-user-btn {
+      width: 100%; display: flex; align-items: center; gap: 0.65rem;
+      padding: 0.6rem 0.75rem; border-radius: 12px;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      color: #0f172a; text-align: left;
+      transition: all 0.2s ease; cursor: pointer; text-decoration: none;
+    }
+    .sidebar-user-btn:hover {
+      background: #f1f5f9; border-color: #cbd5e1;
+    }
+    .user-avatar-mini {
+      font-size: 1.5rem; color: #0284c7; line-height: 1; flex-shrink: 0;
+    }
+    .user-name {
+      display: block; font-weight: 700; font-size: 0.85rem; color: #0f172a; line-height: 1.2;
+    }
+    .user-email {
+      display: block; font-size: 0.72rem; color: #64748b; line-height: 1.2;
+    }
+
+    /* ---------- TOP BAR ---------- */
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      min-height: var(--topbar-h);
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      padding: .7rem 1.75rem;
+      background: rgba(255,255,255,.86);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar .page-title { font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--text); }
+    .topbar .page-sub   { font-size: .78rem; color: var(--muted); margin: 0; }
+
+    .clock-pill {
+      display: inline-flex; align-items: center; gap: .55rem;
+      padding: .4rem .9rem; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--line);
+      font-size: .78rem; color: var(--muted); box-shadow: var(--float-1);
+    }
+    .clock-pill i { color: var(--brand); }
+    .clock-pill b { color: var(--text); font-weight: 600; }
+
+    /* Airplane Return-to-Home Button in Left Topbar */
+    .airplane-home-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .45rem;
+      padding: .45rem .85rem;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+      color: #ffffff !important;
+      font-size: .88rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 2px 8px rgba(14,165,233,.32);
+      border: 1px solid rgba(255,255,255,.45);
+      transition: all .2s cubic-bezier(.2,.8,.2,1);
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .airplane-home-btn i {
+      font-size: 1.15rem;
+      transform: rotate(45deg);
+      display: inline-block;
+      transition: transform .25s ease;
+    }
+    .airplane-home-btn:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 5px 16px rgba(14,165,233,.45);
+      background: linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%);
+      color: #ffffff !important;
+    }
+    .airplane-home-btn:hover i {
+      transform: rotate(45deg) translate(2px, -2px);
+    }
+    .airplane-home-btn:active {
+      transform: translateY(0) scale(0.97);
+    }
+
+    .icon-btn {
+      position: relative; width: 40px; height: 40px; border-radius: 12px;
+      display: inline-grid; place-items: center;
+      background: var(--surface); border: 1px solid var(--line); color: var(--text);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .icon-btn:hover { border-color: #b8c7de; box-shadow: var(--float-1); }
+    .icon-btn .badge { position: absolute; top: -6px; right: -6px; }
+
+    .notif-dropdown {
+      width: 360px; max-height: 420px; overflow-y: auto; padding: .5rem;
+      border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--float-2);
+    }
+    .notif-dropdown .dropdown-item { border-radius: var(--r-sm); white-space: normal; }
+
+    /* ---------- CONTENT AREA ---------- */
+    .content-area { flex: 1; padding: 1.75rem; max-width: 1560px; width: 100%; margin: 0 auto; }
+
+    .quick-actions-row { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .quick-action-chip {
+      display: inline-flex; align-items: center; gap: .55rem;
+      padding: .5rem 1rem; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--line);
+      color: var(--text); font-weight: 600; font-size: .83rem; text-decoration: none;
+      box-shadow: 0 1px 2px rgba(14,26,43,.05);
+      transition: border-color .15s, box-shadow .15s, transform .15s;
+    }
+    .quick-action-chip i { color: var(--brand); font-size: 1.05rem; }
+    .quick-action-chip:hover { border-color: var(--brand); box-shadow: var(--float-1); transform: translateY(-2px); }
+
+    /* =====================================================
+       FLOATING CARDS  (reusable by every child template)
+       .float-card  .stat-card  .info-card  .panel  .kpi-card
+       ===================================================== */
+    .float-card, .stat-card, .info-card, .panel, .kpi-card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid rgba(226,232,240,.9);
+      border-radius: var(--r-lg);
+      box-shadow: var(--float-1);
+      transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, border-color .22s ease;
+      height: 100%;
+    }
+    .float-card:hover, .stat-card:hover, .info-card:hover, .panel:hover, .kpi-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--float-2);
+      border-color: #c9d8f0;
+    }
+
+    .stat-card, .info-card, .kpi-card { padding: 1.25rem 1.35rem; display: flex; flex-direction: column; }
+    .panel { display: flex; flex-direction: column; overflow: hidden; }
+    .panel-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      padding: 1.1rem 1.35rem; border-bottom: 1px solid var(--line);
+    }
+    .panel-head h2, .panel-head h3, .panel-head h5 { font-size: .98rem; font-weight: 700; margin: 0; }
+    .panel-head .panel-sub { font-size: .78rem; color: var(--muted); margin: 2px 0 0; }
+    .panel-body { padding: 1.25rem 1.35rem; flex: 1; }
+    .panel-body.flush { padding: 0; }
+    .panel-foot { padding: .8rem 1.35rem; border-top: 1px solid var(--line); font-size: .82rem; background: #fafcff; }
+
+    /* KPI content */
+    .kpi-top   { display: flex; justify-content: space-between; align-items: flex-start; }
+    .kpi-value { font-size: 2rem; font-weight: 800; line-height: 1; margin: 1.1rem 0 .35rem; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .kpi-label { color: var(--muted); font-size: .82rem; margin: 0; }
+
+    /* Status edge: the card's left edge encodes its state */
+    .is-ok    { box-shadow: inset 4px 0 0 var(--ok),    var(--float-1); }
+    .is-warn  { box-shadow: inset 4px 0 0 var(--warn),  var(--float-1); }
+    .is-alert { box-shadow: inset 4px 0 0 var(--alert), var(--float-1); }
+    .is-info  { box-shadow: inset 4px 0 0 var(--info),  var(--float-1); }
+
+    /* Icon tiles */
+    .icon-circle {
+      width: 46px; height: 46px; border-radius: 14px;
+      display: grid; place-items: center; font-size: 1.35rem;
+      background: var(--info-soft); color: var(--info);
+    }
+    .icon-circle.ok    { background: var(--ok-soft);    color: var(--ok); }
+    .icon-circle.warn  { background: var(--warn-soft);  color: var(--warn); }
+    .icon-circle.alert { background: var(--alert-soft); color: var(--alert); }
+
+    /* Badges / pills */
+    .badge-soft {
+      display: inline-flex; align-items: center; gap: .25rem;
+      background: var(--info-soft); color: var(--info);
+      font-weight: 700; font-size: .75rem; padding: .3rem .65rem; border-radius: 999px;
+    }
+    .badge-soft.ok    { background: var(--ok-soft);    color: var(--ok); }
+    .badge-soft.warn  { background: var(--warn-soft);  color: var(--warn); }
+    .badge-soft.alert { background: var(--alert-soft); color: var(--alert); }
+
+    .status-pill {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .76rem; font-weight: 700; padding: .25rem .65rem; border-radius: 999px;
+    }
+    .status-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .status-pill.on-time { background: var(--ok-soft);    color: var(--ok); }
+    .status-pill.boarding{ background: var(--info-soft);  color: var(--info); }
+    .status-pill.boarding-completed { background: #ede9fe; color: #6366f1; }
+    .status-pill.ready   { background: #e0e7ff; color: #4338ca; }
+    .status-pill.delayed { background: var(--warn-soft);  color: var(--warn); }
+    .status-pill.cancelled{background: var(--alert-soft); color: var(--alert); }
+    .status-pill.departed{ background: #f1f5f9; color: #64748b; }
+
+    /* =====================================================
+       BENTO GRID  (the new card layout)
+       Use .bento > .span-3 / .span-4 / .span-6 / .span-8 / .span-12
+       ===================================================== */
+    .bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1.25rem; }
+    .bento + .bento { margin-top: 1.25rem; }
+    .bento > * { grid-column: span 12; min-width: 0; }
+    @media (min-width: 640px)  { .bento > .span-3  { grid-column: span 6; }
+                                 .bento > .span-4  { grid-column: span 6; } }
+    @media (min-width: 1200px) { .bento > .span-3  { grid-column: span 3; }
+                                 .bento > .span-4  { grid-column: span 4; }
+                                 .bento > .span-5  { grid-column: span 5; }
+                                 .bento > .span-6  { grid-column: span 6; }
+                                 .bento > .span-7  { grid-column: span 7; }
+                                 .bento > .span-8  { grid-column: span 8; }
+                                 .bento > .span-9  { grid-column: span 9; } }
+    .bento > .tall { grid-row: span 2; }
+
+    /* One orchestrated page-load moment: the grid settles into place */
+    @keyframes settle { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .bento > * { animation: settle .5s cubic-bezier(.2,.8,.2,1) both; }
+    .bento > *:nth-child(2) { animation-delay: .05s; }
+    .bento > *:nth-child(3) { animation-delay: .10s; }
+    .bento > *:nth-child(4) { animation-delay: .15s; }
+    .bento > *:nth-child(n+5) { animation-delay: .2s; }
+    .card-animate { animation: settle .5s cubic-bezier(.2,.8,.2,1) both; }  /* backward compat */
+    .card-delay-1 { animation-delay: .05s; } .card-delay-2 { animation-delay: .10s; }
+    .card-delay-3 { animation-delay: .15s; } .card-delay-4 { animation-delay: .20s; }
+
+    /* Tables inside panels */
+    .table-modern { margin: 0; }
+    .table-modern thead th {
+      font-size: .76rem; font-weight: 600; color: var(--muted);
+      background: #f7f9fc; border-bottom: 1px solid var(--line); padding: .7rem 1.35rem; white-space: nowrap;
+    }
+    .table-modern tbody td { padding: .8rem 1.35rem; vertical-align: middle; border-color: var(--line); }
+    .table-modern tbody tr:hover { background: #f7faff; }
+
+    /* Progress rows */
+    .meter { height: 8px; border-radius: 99px; background: #e9eef6; overflow: hidden; }
+    .meter > span { display: block; height: 100%; border-radius: inherit; background: var(--brand); }
+    .meter.ok > span { background: var(--ok); } .meter.warn > span { background: var(--warn); } .meter.alert > span { background: var(--alert); }
+
+    /* Alerts / flash messages */
+    .alert-modern {
+      border: 1px solid var(--line); border-radius: var(--r-md);
+      background: var(--surface); box-shadow: var(--float-1); border-left-width: 5px;
+    }
+    .alert-modern.alert-success { border-left-color: var(--ok); }
+    .alert-modern.alert-danger  { border-left-color: var(--alert); }
+    .alert-modern.alert-warning { border-left-color: var(--warn); }
+    .alert-modern.alert-info    { border-left-color: var(--info); }
+
+    /* Footer */
+    .footer-modern {
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+      padding: 1rem 1.75rem; font-size: .8rem; color: var(--muted);
+      background: var(--surface); border-top: 1px solid var(--line);
+    }
+    .sys-ok { display: inline-flex; align-items: center; gap: .5rem; font-weight: 600; color: var(--ok); }
+    .sys-ok::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+
+    /* Responsive tweaks */
+    @media (max-width: 991.98px) {
+      .topbar { padding: .6rem 1rem; }
+      .content-area { padding: 1.1rem 1rem; }
+      .footer-modern { padding: .9rem 1rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .float-card:hover, .stat-card:hover, .info-card:hover, .panel:hover, .kpi-card:hover,
+      .quick-action-chip:hover { transform: none; }
+    }
+  </style>
+</head>
+<body class="{% if user.is_authenticated %}{% if user.is_passenger %}portal-passenger{% elif user.is_ground_staff %}portal-staff{% elif user.is_operations_manager %}portal-manager{% endif %}{% else %}portal-public{% endif %}">
+
+<div class="app-wrapper">
+
+  {% if user.is_authenticated %}
+  <!-- ========== SIDEBAR (static on desktop, slide-in drawer on mobile) ========== -->
+  <aside class="sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-inner">
+
+      <!-- Brand Header -->
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <a href="{% url 'home' %}" class="brand-new">
+          <span class="brand-icon-box">
+            <i class="bi bi-airplane-engines-fill"></i>
+          </span>
+          <div>
+            <span class="brand-title">Aero Ground</span>
+            <span class="brand-subtitle"><span class="status-indicator-live"></span> Cochin Intl (COK)</span>
+          </div>
+        </a>
+        <button type="button" class="btn-close d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close menu"></button>
+      </div>
+
+      <!-- Persona Card -->
+      <div class="sidebar-persona-card mb-3">
+        <div class="persona-avatar-wrap">
+          <i class="bi bi-person-fill"></i>
+        </div>
+        <div class="persona-info">
+          <div class="persona-name text-truncate" title="{{ user.get_full_name|default:user.username }}">
+            {{ user.get_full_name|default:user.username }}
+          </div>
+          <div class="persona-badge-role">
+            {% if user.is_operations_manager %}
+              <span class="badge badge-role manager"><i class="bi bi-shield-shaded me-1"></i>AOCC Control</span>
+            {% elif user.is_ground_staff %}
+              <span class="badge badge-role staff"><i class="bi bi-wrench-adjustable me-1"></i>Ground Staff</span>
+            {% else %}
+              <span class="badge badge-role passenger"><i class="bi bi-ticket-perforated-fill me-1"></i>Passenger</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-grow-1">
+        <div class="nav-section-label">General</div>
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a href="{% url 'home' %}" class="sidebar-link {% if request.path == '/' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-house-door-fill"></i></span>
+              <span class="link-label">Home &amp; FIDS</span>
+            </a>
+          </li>
+        </ul>
+
+        {% if user.is_passenger %}
+        <div class="nav-section-label">Passenger Travel</div>
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a href="{% url 'passenger_dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'passenger_dashboard' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-speedometer2"></i></span>
+              <span class="link-label">Travel Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'passenger_dashboard' %}#my-bookings" class="sidebar-link">
+              <span class="link-icon"><i class="bi bi-ticket-perforated"></i></span>
+              <span class="link-label">My Booked Flights</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'flight_search' %}" class="sidebar-link {% if request.resolver_match.url_name == 'flight_search' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-search"></i></span>
+              <span class="link-label">Book a Flight</span>
+              <span class="badge bg-primary bg-opacity-10 text-primary ms-auto" style="font-size: 0.68rem;">50+ Hubs</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'notifications_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'notifications_list' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-bell"></i></span>
+              <span class="link-label">Travel Alerts</span>
+              {% if unread_notifications_count > 0 %}
+                <span class="badge bg-danger rounded-pill ms-auto">{{ unread_notifications_count }}</span>
+              {% endif %}
+            </a>
+          </li>
+        </ul>
+
+        <!-- Passenger Mini Helper Banner -->
+        <div class="mt-3 p-3 rounded-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #ede9fe 100%); border: 1px solid #dbeafe;">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-radar text-primary fs-6"></i>
+            <strong class="text-dark small" style="font-size: 0.78rem;">Live Gate & Telemetry</strong>
+          </div>
+          <p class="text-muted mb-2" style="font-size: 0.72rem; line-height: 1.3;">Check turnaround & baggage loading updates in real time.</p>
+          <a href="{% url 'flight_search' %}" class="btn btn-sm btn-primary w-100 fw-bold rounded-pill shadow-xs" style="font-size: 0.75rem;">
+            <i class="bi bi-airplane-fill me-1"></i> Search 50+ Destinations
+          </a>
+        </div>
+        {% endif %}
+
+        {% if user.is_ground_staff %}
+        <div class="nav-section-label">My Shift &amp; Tasks</div>
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a href="{% url 'ground_staff_dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'ground_staff_dashboard' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-grid-1x2-fill"></i></span>
+              <span class="link-label">Staff Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'staff_flights' %}" class="sidebar-link {% if request.resolver_match.url_name == 'staff_flights' or 'seats' in request.path %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-airplane-engines-fill"></i></span>
+              <span class="link-label">Flights &amp; Gate Board</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'staff_counter_booking' %}" class="sidebar-link {% if request.resolver_match.url_name == 'staff_counter_booking' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-person-plus-fill"></i></span>
+              <span class="link-label">Counter Booking</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'staff_ticket_verification' %}" class="sidebar-link {% if request.resolver_match.url_name == 'staff_ticket_verification' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-shield-check"></i></span>
+              <span class="link-label">Ticket Verification</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'staff_all_baggage' %}" class="sidebar-link {% if request.resolver_match.url_name == 'staff_all_baggage' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-luggage-fill"></i></span>
+              <span class="link-label">Baggage Operations</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'ground_staff_dashboard' %}#assigned-flights" class="sidebar-link">
+              <span class="link-icon"><i class="bi bi-airplane"></i></span>
+              <span class="link-label">All Flights Hub</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'staff_report_issue' %}" class="sidebar-link {% if request.resolver_match.url_name == 'staff_report_issue' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-exclamation-triangle-fill"></i></span>
+              <span class="link-label">Report Issue</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'notifications_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'notifications_list' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-bell"></i></span>
+              <span class="link-label">Staff Alerts</span>
+              {% if unread_notifications_count > 0 %}
+                <span class="badge bg-danger rounded-pill ms-auto">{{ unread_notifications_count }}</span>
+              {% endif %}
+            </a>
+          </li>
+        </ul>
+        {% endif %}
+
+        {% if user.is_operations_manager %}
+        <div class="nav-section-label">Operations Control</div>
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a href="{% url 'manager_dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'manager_dashboard' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-display"></i></span>
+              <span class="link-label">Control Centre</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_flights' %}" class="sidebar-link {% if 'flights' in request.path %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-airplane-engines"></i></span>
+              <span class="link-label">Flight Ops</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_gates' %}" class="sidebar-link {% if 'gates' in request.path %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-door-open-fill"></i></span>
+              <span class="link-label">Gates &amp; AI</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_boarding' %}" class="sidebar-link {% if request.resolver_match.url_name == 'manager_boarding' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-people-fill"></i></span>
+              <span class="link-label">Boarding</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_baggage' %}" class="sidebar-link {% if request.resolver_match.url_name == 'manager_baggage' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-luggage-fill"></i></span>
+              <span class="link-label">Baggage</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_delays' %}" class="sidebar-link {% if request.resolver_match.url_name == 'manager_delays' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-clock-history"></i></span>
+              <span class="link-label">Delays</span>
+            </a>
+          </li>
+        </ul>
+
+        <div class="nav-section-label">People &amp; Fleet</div>
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a href="{% url 'manager_staff' %}" class="sidebar-link {% if 'staff' in request.path and not user.is_ground_staff %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-person-badge-fill"></i></span>
+              <span class="link-label">Staff Roster</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_passengers' %}" class="sidebar-link {% if request.resolver_match.url_name == 'manager_passengers' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-person-lines-fill"></i></span>
+              <span class="link-label">Passengers</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_counter_booking' %}" class="sidebar-link {% if request.resolver_match.url_name == 'manager_counter_booking' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-calculator"></i></span>
+              <span class="link-label">Counter Desk</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_aircraft' %}" class="sidebar-link {% if 'aircraft' in request.path %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-shield-shaded"></i></span>
+              <span class="link-label">Fleet</span>
+            </a>
+          </li>
+        </ul>
+
+        <div class="nav-section-label">AI &amp; Reports</div>
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a href="{% url 'manager_ai_insights' %}" class="sidebar-link {% if request.resolver_match.url_name == 'manager_ai_insights' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-cpu"></i></span>
+              <span class="link-label">AI Predictions</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_issues' %}" class="sidebar-link {% if request.resolver_match.url_name == 'manager_issues' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-tools"></i></span>
+              <span class="link-label">Issues</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'manager_reports' %}" class="sidebar-link {% if request.resolver_match.url_name == 'manager_reports' %}active{% endif %}">
+              <span class="link-icon"><i class="bi bi-file-earmark-bar-graph"></i></span>
+              <span class="link-label">Reports</span>
+            </a>
+          </li>
+        </ul>
+        {% endif %}
+      </nav>
+
+      <!-- Account / Footer -->
+      <div class="sidebar-footer-new pt-3 mt-auto">
+        <div class="dropdown dropup">
+          <button class="sidebar-user-btn" type="button" id="sidebarUserDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="user-avatar-mini">
+              <i class="bi bi-person-circle"></i>
+            </div>
+            <div class="user-details min-w-0">
+              <span class="user-name text-truncate" style="max-width: 130px;">{{ user.get_full_name|default:user.username }}</span>
+              <span class="user-email text-truncate" style="max-width: 130px;">{{ user.email|default:"Active User" }}</span>
+            </div>
+            <i class="bi bi-three-dots-vertical text-muted ms-auto"></i>
+          </button>
+          <ul class="dropdown-menu shadow-lg border-0 rounded-4 p-2 mb-2 w-100" aria-labelledby="sidebarUserDropdown">
+            <li>
+              <a class="dropdown-item rounded-3 py-2" href="{% url 'notifications_list' %}">
+                <i class="bi bi-bell me-2 text-primary"></i> Notifications
+                {% if unread_notifications_count > 0 %}
+                  <span class="badge bg-danger rounded-pill ms-auto float-end">{{ unread_notifications_count }}</span>
+                {% endif %}
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item rounded-3 py-2" href="{% url 'dashboard_redirect' %}">
+                <i class="bi bi-speedometer2 me-2 text-info"></i> My Dashboard
+              </a>
+            </li>
+            <li><hr class="dropdown-divider my-1"></li>
+            <li>
+              <a class="dropdown-item rounded-3 py-2 text-danger fw-semibold" href="{% url 'logout' %}">
+                <i class="bi bi-box-arrow-right me-2"></i> Sign Out
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+  {% endif %}
+
+  <!-- ========== MAIN COLUMN ========== -->
+  <div class="app-main">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="d-flex align-items-center gap-2 gap-md-3 min-w-0">
+        <!-- Prominent Airplane Return-to-Home Button (Available on Every Page) -->
+        <a href="{% url 'home' %}" class="airplane-home-btn" title="Return to Home Page / Live Flight Board" aria-label="Return to Home Page">
+          <i class="bi bi-airplane-fill"></i>
+          <span class="d-none d-sm-inline">Home</span>
+        </a>
+
+        {% if user.is_authenticated %}
+        <button class="icon-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Open menu">
+          <i class="bi bi-list fs-5"></i>
+        </button>
+        {% endif %}
+
+        {% block header_title %}
+        <div>
+          <h1 class="page-title">{% block page_title %}Aero Ground Operations{% endblock %}</h1>
+          <p class="page-sub d-none d-sm-block">{% block page_subtitle %}Cochin International Airport · live operations{% endblock %}</p>
+        </div>
+        {% endblock %}
+      </div>
+
+      <div class="d-flex align-items-center gap-2 gap-md-3">
+        <!-- Live clock -->
+        <div class="clock-pill d-none d-md-inline-flex" aria-live="off">
+          <i class="bi bi-clock"></i>
+          <span class="font-monospace"><b id="clock-utc">--:--:--</b> UTC</span>
+          <span class="text-black-50">|</span>
+          <span class="font-monospace"><b id="clock-cok">--:--:--</b> COK</span>
+        </div>
+
+        {% if user.is_authenticated %}
+        <a href="{% url 'dashboard_redirect' %}" class="btn btn-sm btn-primary fw-semibold d-none d-sm-inline-flex align-items-center gap-2 rounded-pill px-3">
+          <i class="bi bi-speedometer2"></i> My dashboard
+        </a>
+
+        <!-- Notification bell -->
+        <div class="dropdown">
+          <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
+            <i class="bi bi-bell-fill"></i>
+            {% if unread_notifications_count > 0 %}<span class="badge rounded-pill bg-danger">{{ unread_notifications_count }}</span>{% endif %}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end notif-dropdown">
+            <li class="d-flex justify-content-between align-items-center px-2 py-2 mb-1 border-bottom">
+              <span class="fw-bold small">Notifications</span>
+              <a href="{% url 'mark_all_notifications_read' %}" class="small text-decoration-none">Mark all read</a>
+            </li>
+            {% if user_notifications %}
+              {% for notif in user_notifications %}
+              <li>
+                <a class="dropdown-item p-2 mb-1 {% if not notif.is_read %}bg-primary bg-opacity-10{% endif %}" href="{% url 'notifications_list' %}">
+                  <div class="d-flex justify-content-between gap-2">
+                    <strong class="small text-truncate" style="max-width: 220px;">{{ notif.title }}</strong>
+                    <span class="text-muted" style="font-size: .68rem;">{{ notif.created_at|timesince }} ago</span>
+                  </div>
+                  <div class="text-muted small text-truncate">{{ notif.message }}</div>
+                </a>
+              </li>
+              {% endfor %}
+            {% else %}
+              <li class="text-center text-muted py-4 small">You're all caught up</li>
+            {% endif %}
+            <li class="border-top pt-2 text-center">
+              <a href="{% url 'notifications_list' %}" class="small text-decoration-none">View all notifications</a>
+            </li>
+          </ul>
+        </div>
+
+        <a href="{% url 'logout' %}" class="icon-btn text-danger d-none d-sm-inline-grid" aria-label="Sign out" title="Sign out">
+          <i class="bi bi-box-arrow-right"></i>
+        </a>
+        {% else %}
+        <a href="{% url 'login' %}" class="btn btn-sm btn-outline-primary fw-semibold rounded-pill px-3"><i class="bi bi-box-arrow-in-right me-1"></i>Sign In / Login</a>
+        <a href="{% url 'register' %}" class="btn btn-sm btn-primary fw-semibold rounded-pill px-3"><i class="bi bi-person-plus-fill me-1"></i>Register</a>
+        {% endif %}
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <div class="content-area">
+
+      <!-- Flash messages -->
+      {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show alert-modern" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- Quick actions (override or empty this block per page) -->
+      {% block quick_actions %}
+      <div class="quick-actions-row">
+        <a href="{% url 'flight_search' %}" class="quick-action-chip"><i class="bi bi-search"></i>Search flights</a>
+        {% if user.is_authenticated %}
+        <a href="{% url 'notifications_list' %}" class="quick-action-chip"><i class="bi bi-bell"></i>Alerts</a>
+        <a href="{% url 'dashboard_redirect' %}" class="quick-action-chip"><i class="bi bi-grid"></i>Dashboard</a>
+        {% endif %}
+        {% if user.is_operations_manager %}
+        <a href="{% url 'manager_ai_insights' %}" class="quick-action-chip"><i class="bi bi-cpu"></i>AI insights</a>
+        {% endif %}
+      </div>
+      {% endblock %}
+
+      <main>
+        {% block content %}
+        <!-- Sample layout shown only when a page doesn't define its own content -->
+        <!-- Row 1: KPIs -->
+        <section class="bento" aria-label="Key figures">
+          <article class="kpi-card is-info span-3">
+            <div class="kpi-top"><div class="icon-circle"><i class="bi bi-airplane-engines"></i></div><span class="badge-soft ok"><i class="bi bi-arrow-up-short"></i>12%</span></div>
+            <p class="kpi-value">148</p><p class="kpi-label">Active flights today</p>
+          </article>
+          <article class="kpi-card is-ok span-3">
+            <div class="kpi-top"><div class="icon-circle ok"><i class="bi bi-people-fill"></i></div><span class="badge-soft ok"><i class="bi bi-arrow-up-short"></i>5%</span></div>
+            <p class="kpi-value">6,420</p><p class="kpi-label">Passengers processed</p>
+          </article>
+          <article class="kpi-card is-warn span-3">
+            <div class="kpi-top"><div class="icon-circle warn"><i class="bi bi-clock-history"></i></div><span class="badge-soft warn"><i class="bi bi-arrow-down-short"></i>2%</span></div>
+            <p class="kpi-value">8</p><p class="kpi-label">Active delays</p>
+          </article>
+          <article class="kpi-card is-ok span-3">
+            <div class="kpi-top"><div class="icon-circle ok"><i class="bi bi-luggage-fill"></i></div><span class="badge-soft ok">98.2%</span></div>
+            <p class="kpi-value">2.1k</p><p class="kpi-label">Bags handled per hour</p>
+          </article>
+        </section>
+
+        <!-- Row 2: main table + side panel -->
+        <section class="bento" aria-label="Flights and gates">
+          <article class="panel span-8">
+            <div class="panel-head">
+              <div><h2>Next departures</h2><p class="panel-sub">Sample data · replace with your flight queryset</p></div>
+              <a href="{% url 'home' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">View all</a>
+            </div>
+            <div class="panel-body flush table-responsive">
+              <table class="table table-modern">
+                <thead><tr><th>Flight</th><th>Destination</th><th>Gate</th><th>Time</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td class="fw-bold">AI 044</td><td>Dubai</td><td>B4</td><td class="tabular">14:20</td><td><span class="status-pill on-time">On time</span></td></tr>
+                  <tr><td class="fw-bold">6E 531</td><td>Bengaluru</td><td>A2</td><td class="tabular">14:45</td><td><span class="status-pill boarding">Boarding</span></td></tr>
+                  <tr><td class="fw-bold">EK 561</td><td>Dubai</td><td>C1</td><td class="tabular">15:10</td><td><span class="status-pill delayed">Delayed</span></td></tr>
+                  <tr><td class="fw-bold">SG 417</td><td>Delhi</td><td>A5</td><td class="tabular">15:35</td><td><span class="status-pill on-time">On time</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel span-4">
+            <div class="panel-head"><div><h2>Gate utilisation</h2><p class="panel-sub">Share of gates in use</p></div></div>
+            <div class="panel-body">
+              <div class="mb-4"><div class="d-flex justify-content-between small mb-1"><span>Terminal 1</span><b class="tabular">72%</b></div><div class="meter"><span style="width:72%"></span></div></div>
+              <div class="mb-4"><div class="d-flex justify-content-between small mb-1"><span>Terminal 2</span><b class="tabular">91%</b></div><div class="meter warn"><span style="width:91%"></span></div></div>
+              <div><div class="d-flex justify-content-between small mb-1"><span>Terminal 3</span><b class="tabular">48%</b></div><div class="meter ok"><span style="width:48%"></span></div></div>
+            </div>
+          </article>
+        </section>
+
+        <!-- Row 3: chart + alerts -->
+        <section class="bento" aria-label="Trends and alerts">
+          <article class="panel span-7">
+            <div class="panel-head"><div><h2>Passengers per hour</h2><p class="panel-sub">Today, sample data</p></div></div>
+            <div class="panel-body"><canvas id="sampleChart" height="120"></canvas></div>
+          </article>
+          <article class="panel span-5">
+            <div class="panel-head"><div><h2>Active alerts</h2><p class="panel-sub">Needs attention</p></div><span class="badge-soft alert">3 open</span></div>
+            <div class="panel-body flush">
+              <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex gap-3 px-4 py-3"><div class="icon-circle alert flex-shrink-0"><i class="bi bi-exclamation-triangle-fill"></i></div><div><div class="fw-semibold">Belt 3 jammed</div><div class="small text-muted">Baggage hall · 12 min ago</div></div></li>
+                <li class="list-group-item d-flex gap-3 px-4 py-3"><div class="icon-circle warn flex-shrink-0"><i class="bi bi-cloud-rain-fill"></i></div><div><div class="fw-semibold">Rain affecting apron work</div><div class="small text-muted">Stand 14–18 · 25 min ago</div></div></li>
+                <li class="list-group-item d-flex gap-3 px-4 py-3"><div class="icon-circle flex-shrink-0"><i class="bi bi-tools"></i></div><div><div class="fw-semibold">Tug maintenance due</div><div class="small text-muted">Fleet · 1 hr ago</div></div></li>
+              </ul>
+            </div>
+          </article>
+        </section>
+        {% endblock %}
+      </main>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer-modern">
+      <span>&copy; 2026 <strong>Cochin International Airport (COK)</strong> · Ground operations</span>
+      <span class="sys-ok">All systems operational</span>
+    </footer>
+  </div>
+</div>
+
+<!-- Bootstrap JS + clock -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (function () {
+    const utc = document.getElementById('clock-utc');
+    const cok = document.getElementById('clock-cok');
+    function tick() {
+      const now = new Date();
+      if (utc) utc.textContent = now.toISOString().substr(11, 8);
+      if (cok) cok.textContent = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false });
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  // Sample chart (only runs when the demo content is rendered)
+  (function () {
+    const el = document.getElementById('sampleChart');
+    if (!el || typeof Chart === 'undefined') return;
+    new Chart(el, {
+      type: 'line',
+      data: {
+        labels: ['06', '08', '10', '12', '14', '16', '18', '20'],
+        datasets: [{
+          data: [320, 780, 1120, 940, 1260, 1480, 1090, 640],
+          borderColor: '#1f6feb', backgroundColor: 'rgba(31,111,235,.10)',
+          fill: true, tension: .35, pointRadius: 3, borderWidth: 2.5
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { grid: { color: '#eef2f7' }, border: { display: false } }
+        }
+      }
+    });
+  })();
+</script>
+
+<!-- Global Datalist for All 50+ Airports -->
+<datalist id="allAirportsDatalist">
+  {% for apt in all_airports %}
+    <option value="{{ apt.city }} ({{ apt.iata_code }})">{{ apt.name }} &bull; {{ apt.country }}</option>
+    <option value="{{ apt.iata_code }}">{{ apt.city }} - {{ apt.name }}</option>
+  {% endfor %}
+</datalist>
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>
